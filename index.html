@@ -7,69 +7,251 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="app-header">
-      <div>
-        <h1>Goth Girl IDLE Manager</h1>
-        <p class="tagline">Gót menedzserek, munkahelyek, és lassan hömpölygő profit.</p>
-      </div>
-      <div class="currency-panel">
-        <div>
-          <span class="label">Kassza</span>
-          <span id="cash" class="value">0</span>
-        </div>
-        <div>
-          <span class="label">Goth Girl Liquid (GGL)</span>
-          <span id="ggl" class="value">0</span>
-        </div>
-        <div>
-          <span class="label">Prestige</span>
-          <span id="prestige" class="value">0</span>
-        </div>
-      </div>
-    </header>
-
-    <main class="layout">
-      <section class="panel">
-        <h2>Munkahelyek</h2>
-        <div id="workplace-list" class="card-list"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Menedzserek</h2>
-        <div id="manager-list" class="card-list"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Speciális menedzserek (GGL)</h2>
-        <div id="special-manager-list" class="card-list"></div>
-      </section>
-
-      <section class="panel">
-        <h2>Prestige rendszer</h2>
-        <div class="prestige-card">
-          <p>
-            Az újrakezdéshez teljesítsd a feltételeket, és kapsz +20% termelési
-            sebességet, egy Goth Girl Liquid (GGL) egységet, valamint új menedzsereket és munkahelyeket.
-            A GGL egy tejfehér, energiás ital, amit különleges menedzserekre költhetsz.
-          </p>
-          <ul>
-            <li>Első újrakezdés: 5 menedzser + 5 munkahely legalább 20-as szinten.</li>
-            <li>Minden további újrakezdéshez a szükséges mennyiség 20%-kal nő.</li>
-          </ul>
-          <div class="prestige-status">
-            <span id="prestige-requirements">Feltételek betöltése...</span>
-            <button id="prestige-button" class="cta" disabled>Újrakezdés</button>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="profile-card">
+          <div class="avatar">
+            <img src="assets/profile.png" alt="Goth Girl profilkép" />
+          </div>
+          <div>
+            <h1>Goth Girl IDLE Manager</h1>
+            <p class="tagline">Gót menedzserek, munkahelyek, és lassan hömpölygő profit.</p>
           </div>
         </div>
-      </section>
-    </main>
+        <nav class="menu">
+          <button class="menu-button active" data-tab="workplaces">Munkahelyek</button>
+          <button class="menu-button" data-tab="managers">Menedzserek</button>
+          <button class="menu-button" data-tab="upgrades">Fejlesztések</button>
+          <button class="menu-button" data-tab="prestige">Prestige</button>
+          <button class="menu-button" data-tab="worlds">Világok</button>
+          <button class="menu-button" data-tab="events">Eventek</button>
+          <button class="menu-button" data-tab="crates">Crates &amp; Girls</button>
+          <button class="menu-button" data-tab="guide">Goth Guide</button>
+        </nav>
+      </aside>
 
-    <footer>
-      <p>
-        Jogi biztonság: A munkahelyek és menedzserek nevei teljesen eredetiek, nem valós márkák vagy franchise-ok.
-      </p>
-    </footer>
+      <div class="main-content">
+        <header class="top-bar">
+          <div class="currency-strip">
+            <div>
+              <span class="label">Aktív világ</span>
+              <span id="current-world" class="value">-</span>
+            </div>
+            <div>
+              <span class="label">Kassza</span>
+              <span id="cash" class="value">0</span>
+            </div>
+            <div>
+              <span class="label">Angyalok</span>
+              <span id="angels" class="value">0</span>
+            </div>
+            <div>
+              <span class="label">Goth Girl Liquid (GGL)</span>
+              <span id="ggl" class="value">0</span>
+            </div>
+          </div>
+          <div class="buy-panel">
+            <span class="label">Vásárlás</span>
+            <div class="buy-buttons" id="buy-buttons">
+              <button class="pill active" data-amount="1">x1</button>
+              <button class="pill" data-amount="10">x10</button>
+              <button class="pill" data-amount="100">x100</button>
+            </div>
+          </div>
+        </header>
 
+        <main class="layout">
+          <section class="panel tab-content active" data-tab="workplaces">
+            <div class="panel-header">
+              <h2>Munkahelyek</h2>
+              <p class="muted">Ciklusok indítása, skálázás, és goth menedzserek.</p>
+            </div>
+            <div id="workplace-list" class="card-list workplace-list"></div>
+          </section>
+
+          <section class="panel tab-content" data-tab="managers">
+            <div class="panel-header">
+              <h2>Menedzserek</h2>
+              <p class="muted">Váltsd a munkákat automata ciklusra.</p>
+            </div>
+            <div id="manager-list" class="card-list"></div>
+          </section>
+
+          <section class="panel tab-content" data-tab="upgrades">
+            <div class="panel-header">
+              <h2>Fejlesztések</h2>
+              <p class="muted">Három réteg: Cash, Angel és Premium (GGL).</p>
+            </div>
+            <div class="upgrade-columns">
+              <div>
+                <h3>Cash Upgrades</h3>
+                <div id="cash-upgrade-list" class="card-list"></div>
+              </div>
+              <div>
+                <h3>Angel Upgrades</h3>
+                <div id="angel-upgrade-list" class="card-list"></div>
+              </div>
+              <div>
+                <h3>Premium (GGL)</h3>
+                <div id="premium-upgrade-list" class="card-list"></div>
+                <div class="time-warp">
+                  <div>
+                    <h4>Time Warp</h4>
+                    <p>Indíts extra termelést: +2 óra automata bevétel.</p>
+                  </div>
+                  <button id="time-warp-button">Time Warp (1 GGL)</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel tab-content" data-tab="prestige">
+            <div class="panel-header">
+              <h2>Prestige rendszer</h2>
+              <p class="muted">Resetelj, szerezz angyalokat és GGL-t.</p>
+            </div>
+            <div class="prestige-card">
+              <div class="prestige-summary">
+                <div>
+                  <h3>Angyal befektetők</h3>
+                  <p id="angel-summary">-</p>
+                </div>
+                <div>
+                  <h3>Lifetime cash</h3>
+                  <p id="lifetime-summary">-</p>
+                </div>
+              </div>
+              <div class="prestige-status">
+                <span id="prestige-requirements">Feltételek betöltése...</span>
+                <button id="prestige-button" class="cta" disabled>Újrakezdés</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel tab-content" data-tab="worlds">
+            <div class="panel-header">
+              <h2>Világok</h2>
+              <p class="muted">Mindegyik világnak saját munkahelyei és angyalai vannak.</p>
+            </div>
+            <div id="world-list" class="card-list"></div>
+          </section>
+
+          <section class="panel tab-content" data-tab="events">
+            <div class="panel-header">
+              <h2>Eventek</h2>
+              <p class="muted">Időzített, külön gazdaság. Végeztével jutalom jár.</p>
+            </div>
+            <div id="event-status" class="event-status"></div>
+            <div id="event-workplace-list" class="card-list workplace-list"></div>
+          </section>
+
+          <section class="panel tab-content" data-tab="crates">
+            <div class="panel-header">
+              <h2>Crates &amp; Goth Girls</h2>
+              <p class="muted">Naponta 1 ingyen láda. Max 2 lány per munkahely.</p>
+            </div>
+            <div class="crate-panel">
+              <div>
+                <h3>Ingyen láda</h3>
+                <p id="crate-timer">Következő láda: ...</p>
+              </div>
+              <button id="open-crate-button">Láda nyitása</button>
+            </div>
+            <div id="girl-list" class="card-list"></div>
+          </section>
+
+          <section class="panel tab-content" data-tab="guide">
+            <h2>Goth Girl útmutató</h2>
+            <div class="guide-section">
+              <div class="guide-block">
+                <h3>Mi ez a játék?</h3>
+                <p>
+                  A Goth Girl IDLE Manager egy „idle/incremental” világ: munkahelyeket veszel, azok
+                  ciklusokban termelnek profitot, a profitból újabb helyeket és szorzókat vásárolsz.
+                </p>
+              </div>
+
+              <div class="guide-block">
+                <h3>1) Munkahelyek</h3>
+                <p>
+                  Minden munkahelynek van bevétele és ciklusideje. A drágább helyek nagyobb ugrást adnak,
+                  ezért a skálázás a kulcs. Ha szeretnéd, kézzel is dolgozhatsz a „Dolgozom” gombbal.
+                </p>
+              </div>
+
+              <div class="guide-block">
+                <h3>2) Menedzserek – automatizálás</h3>
+                <p>
+                  A menedzserek automatikusan újraindítják a profitciklust, így a gót birodalmad akkor is
+                  termel, amikor nem kattintasz.
+                </p>
+              </div>
+
+              <div class="guide-block">
+                <h3>3) Unlockok / mérföldkövek</h3>
+                <ul class="guide-list">
+                  <li>Bizonyos szinteknél bónuszokat kapsz (pl. 25/50/100).</li>
+                  <li>Teljes körű mérföldkő: ha minden munkahely cél szintre ér, globális boost jár.</li>
+                </ul>
+              </div>
+
+              <div class="guide-block">
+                <h3>4) Fejlesztések – három réteg</h3>
+                <ul class="guide-list">
+                  <li><strong>Cash Upgrades</strong>: pénzből vehető szorzók (resetkor elvesznek).</li>
+                  <li><strong>Angel Upgrades</strong>: erősebb boostok, angyalokért cserébe.</li>
+                  <li><strong>Premium (GGL)</strong>: tartós bónuszok és Time Warp.</li>
+                </ul>
+              </div>
+
+              <div class="guide-block">
+                <h3>5) Bolygók és eventek</h3>
+                <p>
+                  A goth univerzum bővíthető új világokkal és limitált eventekkel, amelyek külön
+                  pénznemet és menedzsereket hoznak.
+                </p>
+              </div>
+
+              <div class="guide-block">
+                <h3>Újrakezdés (Reset / Relaunch)</h3>
+                <ul class="guide-list">
+                  <li>Resetkor angyal befektetőket kapsz, akik globális boostot adnak.</li>
+                  <li>Elveszik a cash és a cash/angel upgrade-ek, de a tartós bónuszok megmaradnak.</li>
+                </ul>
+                <p class="guide-note">
+                  Angyal képlet (egyszerűsítve): <strong>Angyalok ≈ 150 × √(Lifetime Earnings quadrillion)
+                  − elköltött angyalok</strong>
+                </p>
+                <p>
+                  Általános szabály: akkor érdemes resetelni, ha az új angyalok száma legalább ~2×
+                  a jelenlegihez képest.
+                </p>
+              </div>
+
+              <div class="guide-block">
+                <h3>Fejlődési ritmus</h3>
+                <ul class="guide-list">
+                  <li>Korai játék: gyors ugrások menedzserekkel és első upgrade-ekkel.</li>
+                  <li>Középjáték: lassulás, mert az angyalok √-skálázással nőnek.</li>
+                  <li>Hosszú táv: reset-ciklus + permanens boostok adják a lendületet.</li>
+                </ul>
+                <p class="guide-note">
+                  Intuíció: az angyalok duplázásához kb. négyszeres lifetime pénz kell, ezért falnak mész
+                  reset nélkül.
+                </p>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer>
+          <p>
+            Jogi biztonság: A munkahelyek és menedzserek nevei paródia jellegűek és fiktívek, nem valós márkák
+            vagy franchise-ok hivatalos megnevezései.
+          </p>
+        </footer>
+      </div>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
