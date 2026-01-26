@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Goth Girl IDLE Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Goth Girl IDLE Manager</h1>
+        <p class="tagline">Gót menedzserek, munkahelyek, és lassan hömpölygő profit.</p>
+      </div>
+      <div class="currency-panel">
+        <div>
+          <span class="label">Kassza</span>
+          <span id="cash" class="value">0</span>
+        </div>
+        <div>
+          <span class="label">Goth Girl Liquid (GGL)</span>
+          <span id="ggl" class="value">0</span>
+        </div>
+        <div>
+          <span class="label">Prestige</span>
+          <span id="prestige" class="value">0</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>Munkahelyek</h2>
+        <div id="workplace-list" class="card-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Menedzserek</h2>
+        <div id="manager-list" class="card-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Speciális menedzserek (GGL)</h2>
+        <div id="special-manager-list" class="card-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Prestige rendszer</h2>
+        <div class="prestige-card">
+          <p>
+            Az újrakezdéshez teljesítsd a feltételeket, és kapsz +20% termelési
+            sebességet, egy Goth Girl Liquid (GGL) egységet, valamint új menedzsereket és munkahelyeket.
+            A GGL egy tejfehér, energiás ital, amit különleges menedzserekre költhetsz.
+          </p>
+          <ul>
+            <li>Első újrakezdés: 5 menedzser + 5 munkahely legalább 20-as szinten.</li>
+            <li>Minden további újrakezdéshez a szükséges mennyiség 20%-kal nő.</li>
+          </ul>
+          <div class="prestige-status">
+            <span id="prestige-requirements">Feltételek betöltése...</span>
+            <button id="prestige-button" class="cta" disabled>Újrakezdés</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Jogi biztonság: A munkahelyek és menedzserek nevei teljesen eredetiek, nem valós márkák vagy franchise-ok.
+      </p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
