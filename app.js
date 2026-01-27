@@ -42,7 +42,7 @@ const WORLD_CONFIGS = [
         id: "starcoffee",
         name: "Starcoffee",
         description: "Jogtiszta kávébár neonfényben.",
-        icon: "☕",
+        icon: "<img src=\"assets/starcoffee.png\" alt=\"Starcoffee ikon\" />",
         baseCost: 20,
         costGrowth: 1.12,
         baseProfit: 6,
@@ -52,7 +52,7 @@ const WORLD_CONFIGS = [
         id: "mc-dominic",
         name: "MC Dominic",
         description: "Gyorsétterem goth vibe-okkal.",
-        icon: "🍔",
+        icon: "<img src=\"assets/mc-dominic.jpg\" alt=\"MC Dominic ikon\" />",
         baseCost: 120,
         costGrowth: 1.14,
         baseProfit: 22,
@@ -62,7 +62,7 @@ const WORLD_CONFIGS = [
         id: "taco-ding",
         name: "Taco Ding",
         description: "Csengős taco pult, éjjeli menüvel.",
-        icon: "🌮",
+        icon: "<img src=\"assets/taco-ding.jpg\" alt=\"Taco Ding ikon\" />",
         baseCost: 520,
         costGrowth: 1.15,
         baseProfit: 80,
@@ -80,8 +80,8 @@ const WORLD_CONFIGS = [
       },
       {
         id: "hotdog-stand",
-        name: "Hotdog Stand",
-        description: "Sötét ablakos stand a téren.",
+        name: "GFC",
+        description: "Gót Fried Chicken, éjfekete fűszerekkel.",
         icon: "🌭",
         baseCost: 5200,
         costGrowth: 1.18,
@@ -214,7 +214,7 @@ const UPGRADE_CONFIGS = {
   angel: [
     {
       id: "angel-global-profit",
-      name: "Angyal aura",
+      name: "Zöld Szörny",
       description: "Globális profit x3",
       cost: 25,
       type: "profit",
@@ -223,7 +223,7 @@ const UPGRADE_CONFIGS = {
     },
     {
       id: "angel-speed",
-      name: "Kísértet tempó",
+      name: "Kék Szörny",
       description: "Globális speed x2",
       cost: 40,
       type: "speed",
@@ -232,8 +232,8 @@ const UPGRADE_CONFIGS = {
     },
     {
       id: "angel-power",
-      name: "Angyal erő",
-      description: "+100% angyal bónusz",
+      name: "Rózsaszín Szörny",
+      description: "+100% szörny bónusz",
       cost: 60,
       type: "angelPower",
       multiplier: 2,
@@ -850,7 +850,7 @@ function renderUpgrades() {
         <p>${upgrade.description}</p>
       </div>
       <div class="meta">
-        <span>Ár: ${upgrade.cost} angyal</span>
+        <span>Ár: ${upgrade.cost} energiaital</span>
         <span>${owned ? "Aktív" : "Elérhető"}</span>
       </div>
       <button ${owned || angels.available < upgrade.cost ? "disabled" : ""}>
@@ -924,7 +924,7 @@ function renderWorlds() {
         <p>${world.description}</p>
       </div>
       <div class="meta">
-        <span>Belépés: ${world.unlockAngels} angyal</span>
+        <span>Belépés: ${world.unlockAngels} energiaital</span>
         <span>${world.id === state.currentWorldId ? "Aktív" : unlocked ? "Elérhető" : "Zárt"}</span>
       </div>
       <button ${world.id === state.currentWorldId || !unlocked ? "disabled" : ""}>
@@ -1240,4 +1240,3 @@ tabButtons.forEach((button) => {
     });
   });
 });
-
