@@ -1,3 +1,5 @@
+https://romanbalazs.github.io/goth-idle-manager.github.io/
+
 Goth Girl útmutató
 Mi ez a játék?
 A Goth Girl IDLE Manager egy „idle/incremental” világ: munkahelyeket veszel, azok ciklusokban termelnek profitot, a profitból újabb helyeket és szorzókat vásárolsz.
