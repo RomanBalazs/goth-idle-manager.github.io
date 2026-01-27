@@ -31,4 +31,5 @@ Középjáték: lassulás, mert az angyalok √-skálázással nőnek.
 Hosszú táv: reset-ciklus + permanens boostok adják a lendületet.
 Intuíció: az angyalok duplázásához kb. négyszeres lifetime pénz kell, ezért falnak mész reset nélkül.
 
-<img width="1795" height="876" alt="image" src="https://github.com/user-attachments/assets/364e66c2-c906-4b21-8202-e129c1d7eee5" />
+<img width="1839" height="697" alt="image" src="https://github.com/user-attachments/assets/b9c8af33-594e-4776-863c-8ba7e3737aef" />
+
