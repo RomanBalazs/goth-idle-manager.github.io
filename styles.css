@@ -210,8 +210,8 @@ body {
 }
 
 .workplace-icon {
-  width: 72px;
-  height: 72px;
+  width: 86px;
+  height: 86px;
   border-radius: 50%;
   background: #2b2733;
   border: 3px solid #4c4759;
@@ -340,6 +340,81 @@ body {
   justify-content: space-between;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.rarity-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.rarity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.rarity-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rarity-dot.uncommon,
+.rarity-label.uncommon {
+  color: #b5f59b;
+}
+
+.rarity-dot.common,
+.rarity-label.common {
+  color: #1f7a3b;
+}
+
+.rarity-dot.rare,
+.rarity-label.rare {
+  color: #53d7ff;
+}
+
+.rarity-dot.ultra-rare,
+.rarity-label.ultra-rare {
+  color: #1b6cff;
+}
+
+.rarity-dot.epic,
+.rarity-label.epic {
+  color: #9b59ff;
+}
+
+.rarity-dot.legendary,
+.rarity-label.legendary {
+  color: #ffd700;
+}
+
+.rarity-dot.exotic,
+.rarity-label.exotic {
+  color: #ff7a18;
+}
+
+.manager-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.liquid-grid {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.liquid-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
 }
 
 .card button,
