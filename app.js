@@ -83,7 +83,7 @@ const WORLD_CONFIGS = [
         id: "pizzahot",
         name: "PizzaHot",
         description: "Forró szeletek lilás füstben.",
-        icon: "<img src=\"assets/pizzahot.png\" alt=\"PizzaHot ikon\" />",
+        icon: "<img src=\"./assets/pizzahot.png\" alt=\"PizzaHot ikon\" onerror=\"this.outerHTML='🍕'\" />",
         baseCost: 1650,
         costGrowth: 1.16,
         baseProfit: 240,
