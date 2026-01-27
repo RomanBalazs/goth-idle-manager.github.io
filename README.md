@@ -31,5 +31,6 @@ Középjáték: lassulás, mert az angyalok √-skálázással nőnek.
 Hosszú táv: reset-ciklus + permanens boostok adják a lendületet.
 Intuíció: az angyalok duplázásához kb. négyszeres lifetime pénz kell, ezért falnak mész reset nélkül.
 
+goth-idle-manager.github.io
 <img width="1839" height="697" alt="image" src="https://github.com/user-attachments/assets/b9c8af33-594e-4776-863c-8ba7e3737aef" />
 
