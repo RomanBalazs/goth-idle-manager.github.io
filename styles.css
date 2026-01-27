@@ -65,9 +65,10 @@ body {
 
 .avatar img {
   width: 100%;
-  height: 100%;
+  height: 110%;
   object-fit: cover;
   display: block;
+  object-position: center 20%;
 }
 
 .menu {
@@ -217,6 +218,14 @@ body {
   display: grid;
   place-items: center;
   font-size: 1.8rem;
+}
+
+.workplace-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 .workplace-info h3 {
@@ -547,4 +556,3 @@ footer {
     align-items: flex-start;
   }
 }
-
