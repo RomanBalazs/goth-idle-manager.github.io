@@ -28,8 +28,19 @@ const GAME_CONFIG = {
   crates: {
     cooldownMs: 24 * 60 * 60 * 1000,
   },
-  gothGirlsMaxPerJob: 2,
+  energyMaxPerJob: 2,
+  managerLevelCostGrowth: 1.1,
 };
+
+const MANAGER_RARITIES = [
+  { id: "uncommon", label: "Uncommon", minLevel: 0, maxLevel: 20, liquidCost: 10, color: "uncommon" },
+  { id: "common", label: "Common", minLevel: 20, maxLevel: 40, liquidCost: 10, color: "common" },
+  { id: "rare", label: "Rare", minLevel: 40, maxLevel: 60, liquidCost: 10, color: "rare" },
+  { id: "ultra-rare", label: "Ultra Rare", minLevel: 60, maxLevel: 80, liquidCost: 10, color: "ultra-rare" },
+  { id: "epic", label: "Epic", minLevel: 80, maxLevel: 100, liquidCost: 10, color: "epic" },
+  { id: "legendary", label: "Legendary", minLevel: 100, maxLevel: 150, liquidCost: 10, color: "legendary" },
+  { id: "exotic", label: "Exotic", minLevel: 150, maxLevel: 200, liquidCost: 10, color: "exotic" },
+];
 
 const WORLD_CONFIGS = [
   {
@@ -72,7 +83,7 @@ const WORLD_CONFIGS = [
         id: "pizzahot",
         name: "PizzaHot",
         description: "Forró szeletek lilás füstben.",
-        icon: "🍕",
+        icon: "<img src=\"assets/pizzahot.png\" alt=\"PizzaHot ikon\" />",
         baseCost: 1650,
         costGrowth: 1.16,
         baseProfit: 240,
@@ -82,7 +93,7 @@ const WORLD_CONFIGS = [
         id: "hotdog-stand",
         name: "GFC",
         description: "Gót Fried Chicken, éjfekete fűszerekkel.",
-        icon: "🌭",
+        icon: "<img src=\"assets/gfc.png\" alt=\"GFC ikon\" />",
         baseCost: 5200,
         costGrowth: 1.18,
         baseProfit: 820,
@@ -316,6 +327,15 @@ const defaultState = {
   gothGirls: {
     owned: {},
   },
+  gothGirlLiquids: {
+    uncommon: 0,
+    common: 0,
+    rare: 0,
+    ultraRare: 0,
+    epic: 0,
+    legendary: 0,
+    exotic: 0,
+  },
   crates: {
     lastFree: 0,
   },
@@ -352,6 +372,8 @@ const buyButtons = document.getElementById("buy-buttons");
 const timeWarpButton = document.getElementById("time-warp-button");
 const crateTimerEl = document.getElementById("crate-timer");
 const openCrateButton = document.getElementById("open-crate-button");
+const gglCrateButton = document.getElementById("ggl-crate-button");
+const cashCrateButton = document.getElementById("cash-crate-button");
 const girlListEl = document.getElementById("girl-list");
 
 function createWorldState(worldId) {
@@ -366,7 +388,7 @@ function createWorldState(worldId) {
       cash: {},
       angel: {},
     },
-    jobAssignments: {},
+    energyAssignments: {},
   };
 }
 
@@ -387,6 +409,17 @@ function initState(nextState) {
   });
   if (!nextState.gothGirls.owned) {
     nextState.gothGirls.owned = {};
+  }
+  if (!nextState.gothGirlLiquids) {
+    nextState.gothGirlLiquids = {
+      uncommon: 0,
+      common: 0,
+      rare: 0,
+      ultraRare: 0,
+      epic: 0,
+      legendary: 0,
+      exotic: 0,
+    };
   }
   return nextState;
 }
@@ -434,11 +467,36 @@ function getManagerConfig(worldId, jobId) {
   );
 }
 
-function getAssignedGirls(worldState, jobId) {
-  if (!worldState.jobAssignments[jobId]) {
-    worldState.jobAssignments[jobId] = [];
+function getAssignedEnergyDrinks(worldState, jobId) {
+  if (!worldState.energyAssignments[jobId]) {
+    worldState.energyAssignments[jobId] = [];
   }
-  return worldState.jobAssignments[jobId];
+  return worldState.energyAssignments[jobId];
+}
+
+function getManagerState(worldState, managerId) {
+  const stored = worldState.managers[managerId];
+  if (stored === true) {
+    worldState.managers[managerId] = { owned: true, level: 1, rarityIndex: 0 };
+    return worldState.managers[managerId];
+  }
+  if (!worldState.managers[managerId]) {
+    worldState.managers[managerId] = { owned: false, level: 0, rarityIndex: 0 };
+  }
+  return worldState.managers[managerId];
+}
+
+function getManagerRarity(managerState) {
+  return MANAGER_RARITIES[Math.min(managerState.rarityIndex, MANAGER_RARITIES.length - 1)];
+}
+
+function getLiquidKey(rarityId) {
+  if (rarityId === "ultra-rare") return "ultraRare";
+  return rarityId;
+}
+
+function getLevelCost(baseCost, level) {
+  return Math.round(baseCost * Math.pow(GAME_CONFIG.managerLevelCostGrowth, level));
 }
 
 function getAngelTotals(worldState) {
@@ -527,19 +585,18 @@ function getJobUpgradeMultipliers(worldState, jobId) {
   return { profit, speed };
 }
 
-function getGothGirlMultipliers(worldState, jobId) {
-  const assigned = getAssignedGirls(worldState, jobId);
+function getEnergyDrinkMultipliers(worldState, jobId) {
+  const assigned = getAssignedEnergyDrinks(worldState, jobId);
   let profit = 1;
   let speed = 1;
-  let crit = 0;
-  assigned.forEach((girlId) => {
-    const girl = GOTH_GIRLS.find((entry) => entry.id === girlId);
-    if (!girl) return;
-    if (girl.bonusType === "profit") profit *= 1 + girl.value;
-    if (girl.bonusType === "speed") speed *= 1 + girl.value;
-    if (girl.bonusType === "crit") crit += girl.value;
+  assigned.forEach((upgradeId) => {
+    const upgrade = UPGRADE_CONFIGS.angel.find((entry) => entry.id === upgradeId);
+    if (!upgrade) return;
+    if (upgrade.type === "profit") profit *= upgrade.multiplier;
+    if (upgrade.type === "speed") speed *= upgrade.multiplier;
+    if (upgrade.type === "angelPower") profit *= upgrade.multiplier;
   });
-  return { profit, speed, crit };
+  return { profit, speed };
 }
 
 function getJobCycleTimeSeconds(worldId, jobId) {
@@ -548,8 +605,8 @@ function getJobCycleTimeSeconds(worldId, jobId) {
   const globalMultipliers = getGlobalMultipliers(worldId);
   const milestoneMultipliers = getJobMilestoneMultipliers(getJobState(worldState, jobId).quantity);
   const upgradeMultipliers = getJobUpgradeMultipliers(worldState, jobId);
-  const girlMultipliers = getGothGirlMultipliers(worldState, jobId);
-  const speedMultiplier = globalMultipliers.speed * milestoneMultipliers.speed * upgradeMultipliers.speed * girlMultipliers.speed;
+  const drinkMultipliers = getEnergyDrinkMultipliers(worldState, jobId);
+  const speedMultiplier = globalMultipliers.speed * milestoneMultipliers.speed * upgradeMultipliers.speed * drinkMultipliers.speed;
   return job.cycleTimeSeconds / speedMultiplier;
 }
 
@@ -561,16 +618,14 @@ function getJobPayout(worldId, jobId) {
   const globalMultipliers = getGlobalMultipliers(worldId);
   const milestoneMultipliers = getJobMilestoneMultipliers(jobState.quantity);
   const upgradeMultipliers = getJobUpgradeMultipliers(worldState, jobId);
-  const girlMultipliers = getGothGirlMultipliers(worldState, jobId);
-  const expectedCrit = 1 + girlMultipliers.crit;
+  const drinkMultipliers = getEnergyDrinkMultipliers(worldState, jobId);
   return (
     job.baseProfit *
     jobState.quantity *
     globalMultipliers.profit *
     milestoneMultipliers.profit *
     upgradeMultipliers.profit *
-    girlMultipliers.profit *
-    expectedCrit
+    drinkMultipliers.profit
   );
 }
 
@@ -586,7 +641,7 @@ function getJobCost(job, quantity, currentQuantity) {
 function canAutoRun(worldId, jobId) {
   const worldState = state.worlds[worldId];
   const manager = getManagerConfig(worldId, jobId);
-  const hasManager = manager && worldState.managers[manager.id];
+  const hasManager = manager && getManagerState(worldState, manager.id).owned;
   const hasPremiumAuto = state.premiumUpgrades["premium-auto"];
   return Boolean(hasManager || hasPremiumAuto);
 }
@@ -666,10 +721,14 @@ function renderWorkplaces() {
     const progress = jobState.cycleEnd
       ? Math.min((Date.now() - jobState.cycleStart) / (jobState.cycleEnd - jobState.cycleStart), 1)
       : 0;
-    const assignedGirls = getAssignedGirls(worldState, job.id);
-    const availableGirls = Object.keys(state.gothGirls.owned)
-      .filter((girlId) => state.gothGirls.owned[girlId])
-      .filter((girlId) => !Object.values(worldState.jobAssignments).flat().includes(girlId));
+    const assignedDrinks = getAssignedEnergyDrinks(worldState, job.id);
+    const purchasedDrinks = UPGRADE_CONFIGS.angel.filter(
+      (upgrade) => worldState.upgrades.angel[upgrade.id]
+    );
+    const assignedDrinkIds = Object.values(worldState.energyAssignments).flat();
+    const availableDrinks = purchasedDrinks.filter(
+      (drink) => !assignedDrinkIds.includes(drink.id)
+    );
 
     const card = document.createElement("div");
     card.className = "workplace-card";
@@ -685,25 +744,22 @@ function renderWorkplaces() {
         </div>
         <div class="workplace-progress"><span style="width:${(progress * 100).toFixed(0)}%"></span></div>
         <div class="assignment-row">
-          <span>Goth lányok: ${assignedGirls.length}/${GAME_CONFIG.gothGirlsMaxPerJob}</span>
-          <select ${assignedGirls.length >= GAME_CONFIG.gothGirlsMaxPerJob || availableGirls.length === 0 ? "disabled" : ""}>
+          <span>Szörny energiaital: ${assignedDrinks.length}/${GAME_CONFIG.energyMaxPerJob}</span>
+          <select ${assignedDrinks.length >= GAME_CONFIG.energyMaxPerJob || availableDrinks.length === 0 ? "disabled" : ""}>
             <option value="">Válassz</option>
-            ${availableGirls
-              .map((girlId) => {
-                const girl = GOTH_GIRLS.find((entry) => entry.id === girlId);
-                return `<option value="${girlId}">${girl.name}</option>`;
-              })
+            ${availableDrinks
+              .map((drink) => `<option value="${drink.id}">${drink.name}</option>`)
               .join("")}
           </select>
           <button class="assign-button" ${
-            assignedGirls.length >= GAME_CONFIG.gothGirlsMaxPerJob || availableGirls.length === 0 ? "disabled" : ""
+            assignedDrinks.length >= GAME_CONFIG.energyMaxPerJob || availableDrinks.length === 0 ? "disabled" : ""
           }>Hozzárendel</button>
         </div>
         <div class="workplace-tags">
-          ${assignedGirls
-            .map((girlId) => {
-              const girl = GOTH_GIRLS.find((entry) => entry.id === girlId);
-              return `<span class="tag">${girl.name} <button data-girl="${girlId}" class="remove-girl">✕</button></span>`;
+          ${assignedDrinks
+            .map((drinkId) => {
+              const drink = UPGRADE_CONFIGS.angel.find((entry) => entry.id === drinkId);
+              return `<span class="tag">${drink?.name ?? "Szörny energiaital"} <button data-drink="${drinkId}" class="remove-drink">✕</button></span>`;
             })
             .join("")}
         </div>
@@ -743,20 +799,20 @@ function renderWorkplaces() {
     const assignButton = card.querySelector(".assign-button");
     const select = card.querySelector("select");
     assignButton.addEventListener("click", () => {
-      const girlId = select.value;
-      if (!girlId) return;
-      const assignment = getAssignedGirls(worldState, job.id);
-      if (assignment.length >= GAME_CONFIG.gothGirlsMaxPerJob) return;
-      assignment.push(girlId);
+      const drinkId = select.value;
+      if (!drinkId) return;
+      const assignment = getAssignedEnergyDrinks(worldState, job.id);
+      if (assignment.length >= GAME_CONFIG.energyMaxPerJob) return;
+      assignment.push(drinkId);
       saveState();
       render();
     });
 
-    card.querySelectorAll(".remove-girl").forEach((button) => {
+    card.querySelectorAll(".remove-drink").forEach((button) => {
       button.addEventListener("click", () => {
-        const girlId = button.dataset.girl;
-        const assignment = getAssignedGirls(worldState, job.id);
-        worldState.jobAssignments[job.id] = assignment.filter((entry) => entry !== girlId);
+        const drinkId = button.dataset.drink;
+        const assignment = getAssignedEnergyDrinks(worldState, job.id);
+        worldState.energyAssignments[job.id] = assignment.filter((entry) => entry !== drinkId);
         saveState();
         render();
       });
@@ -771,7 +827,15 @@ function renderManagers() {
   const worldState = getCurrentWorldState();
   managerList.innerHTML = "";
   MANAGER_CONFIGS.filter((manager) => manager.worldId === worldId).forEach((manager) => {
-    const owned = worldState.managers[manager.id];
+    const managerState = getManagerState(worldState, manager.id);
+    const owned = managerState.owned;
+    const nextLevel = managerState.level + 1;
+    const levelCost = getLevelCost(manager.cost, managerState.level);
+    const rarity = getManagerRarity(managerState);
+    const canLevel = managerState.level < rarity.maxLevel;
+    const liquidKey = getLiquidKey(rarity.id);
+    const liquidCount = state.gothGirlLiquids[liquidKey] ?? 0;
+    const canUpgradeRarity = managerState.level === rarity.maxLevel && managerState.rarityIndex < MANAGER_RARITIES.length - 1;
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
@@ -779,24 +843,46 @@ function renderManagers() {
         <h3>${manager.name}</h3>
         <p>${manager.role}</p>
         <p>${manager.description}</p>
+        <div class="rarity-row">
+          <span class="rarity-dot ${rarity.color}"></span>
+          <span class="rarity-label ${rarity.color}">${rarity.label}</span>
+        </div>
       </div>
       <div class="meta">
-        <span>Ár: ${formatNumber(manager.cost)}</span>
+        <span>Szint: ${managerState.level}</span>
         <span>${owned ? "Aktív" : "Elérhető"}</span>
       </div>
-      <button ${owned || worldState.cash < manager.cost ? "disabled" : ""}>
-        ${owned ? "Aktív" : "Felveszem"}
-      </button>
+      <div class="manager-actions">
+        <button class="manager-level" ${!canLevel || worldState.cash < levelCost ? "disabled" : ""}>
+          ${owned ? `Szint +1 (${formatNumber(levelCost)})` : `Felveszem (${formatNumber(levelCost)})`}
+        </button>
+        <button class="manager-rarity" ${
+          !canUpgradeRarity || liquidCount < rarity.liquidCost ? "disabled" : ""
+        }>
+          Ritkaság +1 (${rarity.liquidCost} ${rarity.label} nedv)
+        </button>
+      </div>
     `;
 
-    card.querySelector("button").addEventListener("click", () => {
-      if (owned || worldState.cash < manager.cost) return;
-      worldState.cash -= manager.cost;
-      worldState.managers[manager.id] = true;
+    card.querySelector(".manager-level").addEventListener("click", () => {
+      if (!canLevel || worldState.cash < levelCost) return;
+      worldState.cash -= levelCost;
+      managerState.owned = true;
+      managerState.level = nextLevel;
       const jobState = getJobState(worldState, manager.targetJobId);
       if (jobState.quantity > 0 && !jobState.cycleEnd) {
         startJobCycle(worldId, manager.targetJobId);
       }
+      saveState();
+      render();
+    });
+
+    card.querySelector(".manager-rarity").addEventListener("click", () => {
+      if (!canUpgradeRarity) return;
+      const available = state.gothGirlLiquids[liquidKey] ?? 0;
+      if (available < rarity.liquidCost) return;
+      state.gothGirlLiquids[liquidKey] -= rarity.liquidCost;
+      managerState.rarityIndex += 1;
       saveState();
       render();
     });
@@ -901,7 +987,7 @@ function updatePrestigeUI() {
   const requirement = GAME_CONFIG.globalMilestone.threshold;
   const jobs = getWorldJobs(state.currentWorldId);
   const eligibleJobs = jobs.filter((job) => getJobState(worldState, job.id).quantity >= requirement).length;
-  const eligibleManagers = Object.values(worldState.managers).filter(Boolean).length;
+  const eligibleManagers = Object.values(worldState.managers).filter((manager) => manager?.owned).length;
   const meets = eligibleJobs === jobs.length && eligibleManagers >= jobs.length;
 
   angelSummaryEl.textContent = `Összes: ${angels.claimed} | Elérhető: ${angels.available} | Resetkor +${angels.upcoming}`;
@@ -1077,27 +1163,27 @@ function renderCrates() {
     ? `Következő láda: ${formatDuration(remaining)}`
     : "Az ingyen láda elérhető!";
   openCrateButton.disabled = remaining > 0;
+  gglCrateButton.disabled = state.ggl < 2;
+  cashCrateButton.disabled = getCurrentWorldState().cash < 5000;
 
-  girlListEl.innerHTML = "";
-  Object.keys(state.gothGirls.owned)
-    .filter((girlId) => state.gothGirls.owned[girlId])
-    .forEach((girlId) => {
-      const girl = GOTH_GIRLS.find((entry) => entry.id === girlId);
-      if (!girl) return;
-      const card = document.createElement("div");
-      card.className = "card girl-card";
-      card.innerHTML = `
-        <div>
-          <h3>${girl.name}</h3>
-          <p>${formatGirlBonus(girl)}</p>
-        </div>
-        <div class="meta">
-          <span>Ritkaság: ${girl.rarity}</span>
-          <span>Státusz: Megvan</span>
-        </div>
-      `;
-      girlListEl.appendChild(card);
-    });
+  girlListEl.innerHTML = `
+    <div class="card girl-card">
+      <h3>Gót lány nedv készlet</h3>
+      <div class="liquid-grid">
+        ${MANAGER_RARITIES.map((rarity) => {
+          const key = getLiquidKey(rarity.id);
+          const count = state.gothGirlLiquids[key] ?? 0;
+          return `
+            <div class="liquid-row">
+              <span class="rarity-dot ${rarity.color}"></span>
+              <span>${rarity.label}</span>
+              <strong>${count}</strong>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function formatGirlBonus(girl) {
@@ -1107,21 +1193,53 @@ function formatGirlBonus(girl) {
   return "";
 }
 
-function openCrate() {
+function addLiquids(results) {
+  results.forEach((rarityId) => {
+    const key = getLiquidKey(rarityId);
+    state.gothGirlLiquids[key] = (state.gothGirlLiquids[key] ?? 0) + 1;
+  });
+}
+
+function rollLiquid(weights) {
+  const total = Object.values(weights).reduce((sum, value) => sum + value, 0);
+  let roll = Math.random() * total;
+  for (const [rarity, weight] of Object.entries(weights)) {
+    roll -= weight;
+    if (roll <= 0) return rarity;
+  }
+  return "uncommon";
+}
+
+function openCrate(crateType) {
   const now = Date.now();
-  const elapsed = now - state.crates.lastFree;
-  if (elapsed < GAME_CONFIG.crates.cooldownMs) return;
-  const roll = Math.random();
-  let pool = GOTH_GIRLS.filter((girl) => girl.rarity === "common");
-  if (roll > 0.8) {
-    pool = GOTH_GIRLS.filter((girl) => girl.rarity === "rare");
+  const results = [];
+  if (crateType === "free") {
+    const elapsed = now - state.crates.lastFree;
+    if (elapsed < GAME_CONFIG.crates.cooldownMs) return;
+    results.push("rare");
+    const weights = { uncommon: 50, common: 25, rare: 15, "ultra-rare": 6, epic: 3, legendary: 1 };
+    while (results.length < 5) {
+      results.push(rollLiquid(weights));
+    }
+    state.crates.lastFree = now;
   }
-  if (roll > 0.95) {
-    pool = GOTH_GIRLS.filter((girl) => girl.rarity === "epic");
+  if (crateType === "cash") {
+    if (getCurrentWorldState().cash < 5000) return;
+    getCurrentWorldState().cash -= 5000;
+    const weights = { uncommon: 35, common: 30, rare: 20, "ultra-rare": 8, epic: 5, legendary: 2 };
+    while (results.length < 5) {
+      results.push(rollLiquid(weights));
+    }
   }
-  const choice = pool[Math.floor(Math.random() * pool.length)];
-  state.gothGirls.owned[choice.id] = true;
-  state.crates.lastFree = now;
+  if (crateType === "ggl") {
+    if (state.ggl < 2) return;
+    state.ggl -= 2;
+    const weights = { uncommon: 20, common: 25, rare: 25, "ultra-rare": 15, epic: 10, legendary: 4, exotic: 1 };
+    while (results.length < 5) {
+      results.push(rollLiquid(weights));
+    }
+  }
+  addLiquids(results);
   saveState();
   render();
 }
@@ -1223,7 +1341,9 @@ timeWarpButton.addEventListener("click", () => {
   render();
 });
 
-openCrateButton.addEventListener("click", openCrate);
+openCrateButton.addEventListener("click", () => openCrate("free"));
+gglCrateButton.addEventListener("click", () => openCrate("ggl"));
+cashCrateButton.addEventListener("click", () => openCrate("cash"));
 
 applyOfflineEarnings();
 render();
