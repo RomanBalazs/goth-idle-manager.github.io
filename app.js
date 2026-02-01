@@ -30,17 +30,115 @@ const GAME_CONFIG = {
   },
   energyMaxPerJob: 2,
   managerLevelCostGrowth: 1.1,
+  // Extra speed scaling per manager level (applied on top of rarity base).
+  managerSpeedBonusPerLevel: 0.005,
 };
 
 const MANAGER_RARITIES = [
-  { id: "uncommon", label: "Uncommon", minLevel: 0, maxLevel: 20, liquidCost: 10, color: "uncommon" },
-  { id: "common", label: "Common", minLevel: 20, maxLevel: 40, liquidCost: 10, color: "common" },
-  { id: "rare", label: "Rare", minLevel: 40, maxLevel: 60, liquidCost: 10, color: "rare" },
-  { id: "ultra-rare", label: "Ultra Rare", minLevel: 60, maxLevel: 80, liquidCost: 10, color: "ultra-rare" },
-  { id: "epic", label: "Epic", minLevel: 80, maxLevel: 100, liquidCost: 10, color: "epic" },
-  { id: "legendary", label: "Legendary", minLevel: 100, maxLevel: 150, liquidCost: 10, color: "legendary" },
-  { id: "exotic", label: "Exotic", minLevel: 150, maxLevel: 200, liquidCost: 10, color: "exotic" },
+  // speedMultiplier: how much faster a job cycle becomes when its manager is owned at this rarity
+  { id: "uncommon", label: "Uncommon", minLevel: 0, maxLevel: 20, liquidCost: 10, color: "uncommon", speedMultiplier: 1.0 },
+  { id: "common", label: "Common", minLevel: 20, maxLevel: 40, liquidCost: 10, color: "common", speedMultiplier: 3.0 },
+  { id: "rare", label: "Rare", minLevel: 40, maxLevel: 60, liquidCost: 10, color: "rare", speedMultiplier: 6.0 },
+  { id: "ultra-rare", label: "Ultra Rare", minLevel: 60, maxLevel: 80, liquidCost: 10, color: "ultra-rare", speedMultiplier: 9.0 },
+  { id: "epic", label: "Epic", minLevel: 80, maxLevel: 100, liquidCost: 10, color: "epic", speedMultiplier: 12.0 },
+  { id: "legendary", label: "Legendary", minLevel: 100, maxLevel: 150, liquidCost: 10, color: "legendary", speedMultiplier: 15.0 },
+  { id: "exotic", label: "Exotic", minLevel: 150, maxLevel: 200, liquidCost: 10, color: "exotic", speedMultiplier: 20.0 },
 ];
+
+
+const BADGES = [
+  {
+    id: "starter",
+    icon: "🖤",
+    name: "Starter",
+    desc: "Az első lépés a sötétségbe.",
+    unlock: () => true,
+  },
+  {
+    id: "crate10",
+    icon: "🎁",
+    name: "Crate Opener",
+    desc: "Nyiss 10 ládát.",
+    unlock: (s) => (s.stats?.totalCratesOpened ?? 0) >= 10,
+    progress: (s) => ({
+      label: "Ládák",
+      current: s.stats?.totalCratesOpened ?? 0,
+      target: 10,
+    }),
+  },
+  {
+    id: "prestige1",
+    icon: "🦇",
+    name: "Reborn",
+    desc: "Csinálj 1 prestige-et.",
+    unlock: (s) => (s.stats?.totalPrestiges ?? 0) >= 1,
+    progress: (s) => ({
+      label: "Prestige",
+      current: s.stats?.totalPrestiges ?? 0,
+      target: 1,
+    }),
+  },
+  {
+    id: "upgrade100",
+    icon: "⚙️",
+    name: "Tinkerer",
+    desc: "Vegyél összesen 100 munka upgrade-et.",
+    unlock: (s) => (s.stats?.totalUpgradesBought ?? 0) >= 100,
+    progress: (s) => ({
+      label: "Upgrade",
+      current: s.stats?.totalUpgradesBought ?? 0,
+      target: 100,
+    }),
+  },
+  {
+    id: "manager10",
+    icon: "🧑‍💼",
+    name: "HR Horror",
+    desc: "Vásárolj 10 menedzser szintet.",
+    unlock: (s) => (s.stats?.totalManagersBought ?? 0) >= 10,
+    progress: (s) => ({
+      label: "Menedzserek",
+      current: s.stats?.totalManagersBought ?? 0,
+      target: 10,
+    }),
+  },
+  {
+    id: "earn1m",
+    icon: "💰",
+    name: "First Million",
+    desc: "Keress összesen 1 000 000 kasszát.",
+    unlock: (s) => (s.stats?.totalCashEarned ?? 0) >= 1_000_000,
+    progress: (s) => ({
+      label: "Összbevétel",
+      current: s.stats?.totalCashEarned ?? 0,
+      target: 1_000_000,
+    }),
+  },
+];
+
+
+const QUEST_CONFIG = {
+  dailyCount: 3,
+  weeklyCount: 3,
+};
+
+const QUEST_TEMPLATES = {
+  daily: [
+    { key: "earn", type: "earn", title: "Kassza", icon: "💰" },
+    { key: "upgrade", type: "upgrade", title: "Fejlesztés", icon: "⚙️" },
+    { key: "manager", type: "manager", title: "Menedzserek", icon: "🧑‍💼" },
+    { key: "crate", type: "crate", title: "Ládák", icon: "🎁" },
+    { key: "level", type: "level_any", title: "Szint", icon: "📈" },
+  ],
+  weekly: [
+    { key: "earn", type: "earn", title: "Kassza", icon: "💰" },
+    { key: "upgrade", type: "upgrade", title: "Fejlesztés", icon: "⚙️" },
+    { key: "manager", type: "manager", title: "Menedzserek", icon: "🧑‍💼" },
+    { key: "crate", type: "crate", title: "Ládák", icon: "🎁" },
+    { key: "level", type: "level_any", title: "Szint", icon: "📈" },
+  ],
+};
+
 
 const WORLD_CONFIGS = [
   {
@@ -346,6 +444,26 @@ const defaultState = {
   },
   lastSeen: Date.now(),
   buyAmount: 1,
+  profile: {
+    nickname: "Player",
+    selectedBadgeId: "starter",
+    unlockedBadges: { starter: true },
+    badgeSort: "status",
+  },
+  stats: {
+    totalClicks: 0,
+    totalUpgradesBought: 0,
+    totalManagersBought: 0,
+    totalCratesOpened: 0,
+    totalPrestiges: 0,
+    totalCashEarned: 0,
+  },  quests: {
+    dayKey: null,
+    weekKey: null,
+    daily: [],
+    weekly: [],
+  },
+
 };
 
 const state = loadState();
@@ -375,6 +493,41 @@ const openCrateButton = document.getElementById("open-crate-button");
 const gglCrateButton = document.getElementById("ggl-crate-button");
 const cashCrateButton = document.getElementById("cash-crate-button");
 const girlListEl = document.getElementById("girl-list");
+const playerNicknameEl = document.getElementById("player-nickname");
+const playerBadgeEl = document.getElementById("player-badge");
+const profileNicknameInput = document.getElementById("profile-nickname");
+const profileSaveNicknameButton = document.getElementById("profile-save-nickname");
+const profileBadgeGrid = document.getElementById("profile-badge-grid");
+const profileSelectedBadgeEl = document.getElementById("profile-selected-badge");
+const profileStatsEl = document.getElementById("profile-stats");
+const profileBadgeSortEl = document.getElementById("profile-badge-sort");
+
+
+const dailyQuestListEl = document.getElementById("daily-quest-list");
+const weeklyQuestListEl = document.getElementById("weekly-quest-list");
+const dailyResetEl = document.getElementById("daily-reset");
+const weeklyResetEl = document.getElementById("weekly-reset");
+const questsPanelEl = document.querySelector('.tab-content[data-tab="quests"]');
+
+function syncBuyButtons() {
+  if (!buyButtons) return;
+  const normalized = normalizeBuyMode(state.buyAmount);
+  state.buyAmount = normalized;
+  const selected = String(normalized);
+  let found = false;
+  buyButtons.querySelectorAll(".pill").forEach((pill) => {
+    const raw = String(pill.dataset.amount ?? "");
+    const isActive = raw === selected;
+    pill.classList.toggle("active", isActive);
+    if (isActive) found = true;
+  });
+  if (!found) {
+    state.buyAmount = 1;
+    buyButtons.querySelectorAll(".pill").forEach((pill) => {
+      pill.classList.toggle("active", String(pill.dataset.amount ?? "") === "1");
+    });
+  }
+}
 
 function createWorldState(worldId) {
   return {
@@ -407,9 +560,36 @@ function initState(nextState) {
       nextState.worlds[world.id] = createWorldState(world.id);
     }
   });
+    // ---- Profile & stats defaults (backward compatible) ----
+  if (!nextState.profile) nextState.profile = structuredClone(defaultState.profile);
+  if (!nextState.profile.unlockedBadges) nextState.profile.unlockedBadges = { starter: true };
+  if (!nextState.profile.unlockedBadges.starter) nextState.profile.unlockedBadges.starter = true;
+  if (!nextState.profile.nickname || typeof nextState.profile.nickname !== "string") nextState.profile.nickname = "Player";
+  if (!nextState.profile.selectedBadgeId) {
+    nextState.profile.selectedBadgeId = Object.keys(nextState.profile.unlockedBadges)[0] || "starter";
+  }
+
+  if (!nextState.profile.badgeSort) nextState.profile.badgeSort = "status";
+
+  if (!nextState.stats) nextState.stats = structuredClone(defaultState.stats);
+  Object.entries(defaultState.stats).forEach(([k, v]) => {
+    if (typeof nextState.stats[k] !== "number") nextState.stats[k] = v;
+  });
+
+  // ---- Quests defaults (backward compatible) ----
+  if (!nextState.quests) nextState.quests = structuredClone(defaultState.quests);
+  if (!Array.isArray(nextState.quests.daily)) nextState.quests.daily = [];
+  if (!Array.isArray(nextState.quests.weekly)) nextState.quests.weekly = [];
+  if (typeof nextState.quests.dayKey !== "string") nextState.quests.dayKey = null;
+  if (typeof nextState.quests.weekKey !== "string") nextState.quests.weekKey = null;
+
   if (!nextState.gothGirls.owned) {
     nextState.gothGirls.owned = {};
   }
+  if (!getWorldConfig(nextState.currentWorldId)) {
+    nextState.currentWorldId = WORLD_CONFIGS[0].id;
+  }
+
   if (!nextState.gothGirlLiquids) {
     nextState.gothGirlLiquids = {
       uncommon: 0,
@@ -428,6 +608,187 @@ function saveState() {
   state.lastSeen = Date.now();
   localStorage.setItem("goth-idl-state", JSON.stringify(state));
 }
+
+// ===== Profile helpers =====
+function sanitizeNickname(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 16);
+}
+
+function ensureBadgesUnlocked() {
+  let changed = false;
+
+  BADGES.forEach((b) => {
+    if (state.profile.unlockedBadges[b.id]) return;
+    if (b.unlock(state)) {
+      state.profile.unlockedBadges[b.id] = true;
+      changed = true;
+      if (!state.profile.selectedBadgeId) state.profile.selectedBadgeId = b.id;
+    }
+  });
+
+  if (!state.profile.unlockedBadges[state.profile.selectedBadgeId]) {
+    state.profile.selectedBadgeId = "starter";
+    changed = true;
+  }
+
+  if (changed) saveState();
+}
+
+function setNickname(value) {
+  state.profile.nickname = sanitizeNickname(value) || "Player";
+  saveState();
+  render();
+}
+
+function setSelectedBadge(badgeId) {
+  if (!state.profile.unlockedBadges[badgeId]) return;
+  state.profile.selectedBadgeId = badgeId;
+  saveState();
+  render();
+}
+
+function setBadgeSort(mode) {
+  const allowed = ["status", "progress", "name"];
+  state.profile.badgeSort = allowed.includes(mode) ? mode : "status";
+  saveState();
+  render();
+}
+
+function getSelectedBadge() {
+  return BADGES.find((b) => b.id === state.profile.selectedBadgeId) || BADGES[0];
+}
+
+function renderProfileHeader() {
+  ensureBadgesUnlocked();
+  const badge = getSelectedBadge();
+  if (playerNicknameEl) playerNicknameEl.textContent = state.profile.nickname;
+  if (playerBadgeEl) playerBadgeEl.textContent = badge.icon;
+}
+
+function renderProfile() {
+  const activeTab = document.querySelector(".tab-content.active")?.dataset?.tab;
+  if (activeTab !== "profile") return;
+
+  ensureBadgesUnlocked();
+
+  if (profileNicknameInput) {
+    if (document.activeElement !== profileNicknameInput && profileNicknameInput.value !== state.profile.nickname) {
+      profileNicknameInput.value = state.profile.nickname;
+    }
+  }
+
+  if (profileSelectedBadgeEl) {
+    const b = getSelectedBadge();
+    profileSelectedBadgeEl.innerHTML = `
+      <div class="row">
+        <span class="icon">${b.icon}</span>
+        <div>
+          <div class="name">${b.name}</div>
+          <div class="desc">${b.desc}</div>
+        </div>
+      </div>
+      <div class="muted small">Aktív</div>
+    `;
+  }
+
+  if (profileBadgeSortEl) {
+    const mode = state.profile.badgeSort || "status";
+    if (profileBadgeSortEl.value !== mode) profileBadgeSortEl.value = mode;
+  }
+
+  if (profileBadgeGrid) {
+    profileBadgeGrid.innerHTML = "";
+
+    const mode = state.profile.badgeSort || "status";
+
+    const entries = BADGES.map((b) => {
+      const unlocked = Boolean(state.profile.unlockedBadges[b.id]);
+      const selected = state.profile.selectedBadgeId === b.id;
+
+      const prog = typeof b.progress === "function" ? b.progress(state) : null;
+      const current = prog ? Math.min(prog.current ?? 0, prog.target ?? 0) : 0;
+      const target = prog ? (prog.target ?? 0) : 0;
+      const ratio = prog && target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
+      const progressText = prog ? `${prog.label}: ${formatNumber(current)} / ${formatNumber(target)}` : "";
+
+      return { b, unlocked, selected, prog, current, target, ratio, progressText };
+    });
+
+    const group = (e) => {
+      if (e.selected) return 0;
+      if (e.unlocked) return 1;
+      return 2;
+    };
+
+    entries.sort((a, c) => {
+      const ga = group(a);
+      const gc = group(c);
+      if (ga !== gc) return ga - gc;
+
+      if (mode === "name") {
+        return a.b.name.localeCompare(c.b.name, "hu");
+      }
+
+      // locked badges: progress desc (closer first)
+      if (ga === 2) {
+        if (c.ratio !== a.ratio) return c.ratio - a.ratio;
+        const ra = (a.target ?? 0) - (a.current ?? 0);
+        const rc = (c.target ?? 0) - (c.current ?? 0);
+        if (ra !== rc) return ra - rc;
+      }
+
+      return a.b.name.localeCompare(c.b.name, "hu");
+    });
+
+    entries.forEach(({ b, unlocked, selected, prog, ratio, progressText }) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = `badge ${unlocked ? "" : "locked"} ${selected ? "selected" : ""}`.trim();
+
+      const tooltip = unlocked
+        ? `${b.icon} ${b.name}\n${b.desc}${progressText ? `\n${progressText}` : ""}`
+        : `${b.icon} ${b.name}\nFeltétel: ${b.desc}${progressText ? `\n${progressText}` : ""}`;
+
+      el.setAttribute("data-tooltip", tooltip);
+      el.setAttribute("aria-label", tooltip);
+      if (!unlocked) el.setAttribute("aria-disabled", "true");
+
+      const reqHtml = unlocked
+        ? `<div class="desc">${b.desc}</div>`
+        : `<div class="req">Feltétel: ${b.desc}</div>
+           <div class="req-meta">${progressText || "Zárolva"}</div>`;
+
+      el.innerHTML = `
+        <div class="row">
+          <span class="icon">${b.icon}</span>
+          <span class="name">${b.name}</span>
+        </div>
+        ${reqHtml}
+        ${!unlocked && prog ? `<div class="mini-progress"><div class="fill" style="width:${Math.round(ratio * 100)}%"></div></div>` : ""}
+      `;
+
+      el.addEventListener("click", () => {
+        if (!unlocked) return;
+        setSelectedBadge(b.id);
+      });
+
+      profileBadgeGrid.appendChild(el);
+    });
+  }
+
+  if (profileStatsEl) {
+    const s = state.stats;
+    profileStatsEl.innerHTML = `
+      <div class="profile-stat"><span>Kattintások</span><strong>${(s.totalClicks ?? 0).toFixed(0)}</strong></div>
+      <div class="profile-stat"><span>Munka upgrade</span><strong>${(s.totalUpgradesBought ?? 0).toFixed(0)}</strong></div>
+      <div class="profile-stat"><span>Menedzser szintek</span><strong>${(s.totalManagersBought ?? 0).toFixed(0)}</strong></div>
+      <div class="profile-stat"><span>Nyitott ládák</span><strong>${(s.totalCratesOpened ?? 0).toFixed(0)}</strong></div>
+      <div class="profile-stat"><span>Prestige</span><strong>${(s.totalPrestiges ?? 0).toFixed(0)}</strong></div>
+      <div class="profile-stat"><span>Összbevétel</span><strong>${formatNumber(s.totalCashEarned ?? 0)}</strong></div>
+    `;
+  }
+}
+
 
 function formatNumber(value) {
   if (value >= 1_000_000_000) {
@@ -489,6 +850,36 @@ function getManagerState(worldState, managerId) {
 function getManagerRarity(managerState) {
   return MANAGER_RARITIES[Math.min(managerState.rarityIndex, MANAGER_RARITIES.length - 1)];
 }
+
+function getManagerEffectiveSpeedMultiplier(managerState) {
+  const rarity = getManagerRarity(managerState);
+  const base = Number(rarity.speedMultiplier ?? 1);
+  const level = Math.max(0, Number(managerState.level ?? 0));
+  // Fine scaling: +X% per level after level 1.
+  const perLevel = Number(GAME_CONFIG.managerSpeedBonusPerLevel ?? 0);
+  const levelFactor = 1 + Math.max(0, level - 1) * perLevel;
+  const total = base * levelFactor;
+  return Number.isFinite(total) && total > 0 ? total : 1;
+}
+
+function formatSpeedMultiplier(mult) {
+  const x = Number(mult);
+  if (!Number.isFinite(x) || x <= 0) return "x1";
+  const rounded = Math.round(x * 100) / 100;
+  return `x${rounded}`;
+}
+
+function getManagerSpeedMultiplier(worldId, jobId) {
+  const worldState = state.worlds[worldId];
+  const manager = getManagerConfig(worldId, jobId);
+  if (!manager) return 1;
+  const ms = getManagerState(worldState, manager.id);
+  if (!ms.owned) return 1;
+  const rarity = getManagerRarity(ms);
+  return getManagerEffectiveSpeedMultiplier(ms);
+}
+
+
 
 function getLiquidKey(rarityId) {
   if (rarityId === "ultra-rare") return "ultraRare";
@@ -606,7 +997,8 @@ function getJobCycleTimeSeconds(worldId, jobId) {
   const milestoneMultipliers = getJobMilestoneMultipliers(getJobState(worldState, jobId).quantity);
   const upgradeMultipliers = getJobUpgradeMultipliers(worldState, jobId);
   const drinkMultipliers = getEnergyDrinkMultipliers(worldState, jobId);
-  const speedMultiplier = globalMultipliers.speed * milestoneMultipliers.speed * upgradeMultipliers.speed * drinkMultipliers.speed;
+  const managerSpeedMultiplier = getManagerSpeedMultiplier(worldId, jobId);
+  const speedMultiplier = globalMultipliers.speed * milestoneMultipliers.speed * upgradeMultipliers.speed * drinkMultipliers.speed * managerSpeedMultiplier;
   return job.cycleTimeSeconds / speedMultiplier;
 }
 
@@ -638,6 +1030,71 @@ function getJobCost(job, quantity, currentQuantity) {
   return Math.round(total);
 }
 
+// ===== Buy amount helpers (x1/x10/x100/NEXT/MAX) =====
+function normalizeBuyMode(value) {
+  if (value === "max" || value === "next") return value;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.floor(n);
+}
+
+function getNextMilestoneThreshold(currentQuantity) {
+  const thresholds = GAME_CONFIG.milestones.map((m) => m.threshold).sort((a, b) => a - b);
+  return thresholds.find((t) => t > currentQuantity) ?? null;
+}
+
+function getMaxAffordableJobQuantity(job, currentQuantity, cash) {
+  const r = job.costGrowth;
+  const startCost = job.baseCost * Math.pow(r, currentQuantity);
+  if (cash < startCost) return 0;
+
+  // r is expected > 1. Handle edge-case gracefully.
+  if (Math.abs(r - 1) < 1e-9) {
+    return Math.max(0, Math.floor(cash / startCost));
+  }
+
+  // Invert geometric series sum to estimate max quantity.
+  const raw = 1 + (cash * (r - 1)) / startCost;
+  let q = Math.floor(Math.log(raw) / Math.log(r));
+  if (!Number.isFinite(q) || q < 0) q = 0;
+
+  // Safety adjust for rounding.
+  while (q > 0 && getJobCost(job, q, currentQuantity) > cash) q -= 1;
+  const HARD_CAP = 1_000_000;
+  while (q < HARD_CAP && getJobCost(job, q + 1, currentQuantity) <= cash) q += 1;
+  return q;
+}
+
+function getBuyPlan(job, currentQuantity, cash, buyModeRaw) {
+  const mode = normalizeBuyMode(buyModeRaw);
+  if (mode === "max") {
+    const qty = getMaxAffordableJobQuantity(job, currentQuantity, cash);
+    const displayQty = qty > 0 ? qty : 1;
+    const cost = getJobCost(job, displayQty, currentQuantity);
+    return { mode, qty, displayQty, cost, target: null, willReachMilestone: false };
+  }
+  if (mode === "next") {
+    const target = getNextMilestoneThreshold(currentQuantity);
+    const needed = target ? Math.max(target - currentQuantity, 1) : 1;
+    const maxAff = getMaxAffordableJobQuantity(job, currentQuantity, cash);
+    const qty = Math.min(needed, maxAff);
+    const displayQty = qty > 0 ? qty : 1;
+    const cost = getJobCost(job, displayQty, currentQuantity);
+    return { mode, qty, displayQty, cost, target: target ?? null, willReachMilestone: qty > 0 && qty === needed };
+  }
+
+  const qty = mode;
+  const cost = getJobCost(job, qty, currentQuantity);
+  return { mode, qty, displayQty: qty, cost, target: null, willReachMilestone: false };
+}
+
+function formatUpgradeButtonText(plan) {
+  if (plan.mode === "next" && plan.target && plan.willReachMilestone) {
+    return `+${plan.displayQty} \u2192 ${plan.target} munka (${formatNumber(plan.cost)})`;
+  }
+  return `+${plan.displayQty} munka (${formatNumber(plan.cost)})`;
+}
+
 function canAutoRun(worldId, jobId) {
   const worldState = state.worlds[worldId];
   const manager = getManagerConfig(worldId, jobId);
@@ -659,8 +1116,10 @@ function startJobCycle(worldId, jobId) {
 function applyPayout(worldId, jobId) {
   const worldState = state.worlds[worldId];
   const payout = getJobPayout(worldId, jobId);
+  if (state.stats) state.stats.totalCashEarned = (state.stats.totalCashEarned ?? 0) + payout;
   worldState.cash += payout;
   worldState.lifetimeEarnings += payout;
+  questOnEvent("earn", payout);
 }
 
 function processWorldCycles(worldId) {
@@ -680,6 +1139,7 @@ function processWorldCycles(worldId) {
       applyPayout(worldId, job.id);
       if (canAutoRun(worldId, job.id)) {
         startJobCycle(worldId, job.id);
+		
       } else {
         jobState.cycleEnd = 0;
       }
@@ -703,6 +1163,8 @@ function applyOfflineEarnings() {
       const payout = getJobPayout(world.id, job.id) * cycles;
       worldState.cash += payout;
       worldState.lifetimeEarnings += payout;
+      if (state.stats) state.stats.totalCashEarned = (state.stats.totalCashEarned ?? 0) + payout;
+      questOnEvent("earn", payout);
     });
   });
 }
@@ -717,7 +1179,8 @@ function renderWorkplaces() {
     const jobState = getJobState(worldState, job.id);
     const payout = getJobPayout(worldId, job.id);
     const cycleTime = getJobCycleTimeSeconds(worldId, job.id);
-    const cost = getJobCost(job, state.buyAmount, jobState.quantity);
+    const buyPlan = getBuyPlan(job, jobState.quantity, worldState.cash, state.buyAmount);
+    const cost = buyPlan.cost;
     const progress = jobState.cycleEnd
       ? Math.min((Date.now() - jobState.cycleStart) / (jobState.cycleEnd - jobState.cycleStart), 1)
       : 0;
@@ -773,7 +1236,7 @@ function renderWorkplaces() {
           ${jobState.cycleEnd ? "Fut..." : "Dolgozom"}
         </button>
         <button class="upgrade-button" ${worldState.cash < cost ? "disabled" : ""}>
-          +${state.buyAmount} munka (${formatNumber(cost)})
+          ${formatUpgradeButtonText(buyPlan)}
         </button>
       </div>
     `;
@@ -781,14 +1244,33 @@ function renderWorkplaces() {
     card.querySelector(".work-button").addEventListener("click", () => {
       if (jobState.quantity <= 0 || jobState.cycleEnd) return;
       startJobCycle(worldId, job.id);
+      if (state.stats) state.stats.totalClicks = (state.stats.totalClicks ?? 0) + 1;
       saveState();
       render();
     });
 
     card.querySelector(".upgrade-button").addEventListener("click", () => {
-      if (worldState.cash < cost) return;
-      worldState.cash -= cost;
-      jobState.quantity += state.buyAmount;
+      const plan = getBuyPlan(job, jobState.quantity, worldState.cash, state.buyAmount);
+      const mode = plan.mode;
+      let purchaseQty = 0;
+      if (mode === "max") {
+        purchaseQty = getMaxAffordableJobQuantity(job, jobState.quantity, worldState.cash);
+      } else if (mode === "next") {
+        const target = getNextMilestoneThreshold(jobState.quantity);
+        const needed = target ? Math.max(target - jobState.quantity, 1) : 1;
+        const maxAff = getMaxAffordableJobQuantity(job, jobState.quantity, worldState.cash);
+        purchaseQty = Math.min(needed, maxAff);
+      } else {
+        purchaseQty = plan.qty;
+      }
+      if (!purchaseQty || purchaseQty <= 0) return;
+      const purchaseCost = getJobCost(job, purchaseQty, jobState.quantity);
+      if (worldState.cash < purchaseCost) return;
+      worldState.cash -= purchaseCost;
+      jobState.quantity += purchaseQty;
+      if (state.stats) state.stats.totalUpgradesBought = (state.stats.totalUpgradesBought ?? 0) + purchaseQty;
+      questOnEvent("upgrade", purchaseQty);
+      refreshDerivedQuestProgress();
       if (canAutoRun(worldId, job.id) && !jobState.cycleEnd) {
         startJobCycle(worldId, job.id);
       }
@@ -850,6 +1332,7 @@ function renderManagers() {
       </div>
       <div class="meta">
         <span>Szint: ${managerState.level}</span>
+        <span>Sebesség: ${formatSpeedMultiplier(getManagerEffectiveSpeedMultiplier(managerState))}</span>
         <span>${owned ? "Aktív" : "Elérhető"}</span>
       </div>
       <div class="manager-actions">
@@ -869,6 +1352,9 @@ function renderManagers() {
       worldState.cash -= levelCost;
       managerState.owned = true;
       managerState.level = nextLevel;
+      if (state.stats) state.stats.totalManagersBought = (state.stats.totalManagersBought ?? 0) + 1;
+      questOnEvent("manager", 1);
+      refreshDerivedQuestProgress();
       const jobState = getJobState(worldState, manager.targetJobId);
       if (jobState.quantity > 0 && !jobState.cycleEnd) {
         startJobCycle(worldId, manager.targetJobId);
@@ -1085,7 +1571,8 @@ function renderEvent() {
     const jobState = eventState.jobs[job.id] || { quantity: 0, cycleEnd: 0, cycleStart: 0 };
     eventState.jobs[job.id] = jobState;
     const payout = job.baseProfit * jobState.quantity;
-    const cost = getJobCost(job, state.buyAmount, jobState.quantity);
+    const buyPlan = getBuyPlan(job, jobState.quantity, eventState.cash, state.buyAmount);
+    const cost = buyPlan.cost;
     const progress = jobState.cycleEnd
       ? Math.min((Date.now() - jobState.cycleStart) / (jobState.cycleEnd - jobState.cycleStart), 1)
       : 0;
@@ -1111,7 +1598,7 @@ function renderEvent() {
           ${jobState.cycleEnd ? "Fut..." : "Dolgozom"}
         </button>
         <button class="upgrade-button" ${eventState.cash < cost || !isActive ? "disabled" : ""}>
-          +${state.buyAmount} munka (${formatNumber(cost)})
+          ${formatUpgradeButtonText(buyPlan)}
         </button>
       </div>
     `;
@@ -1125,9 +1612,25 @@ function renderEvent() {
     });
 
     card.querySelector(".upgrade-button").addEventListener("click", () => {
-      if (!isActive || eventState.cash < cost) return;
-      eventState.cash -= cost;
-      jobState.quantity += state.buyAmount;
+      if (!isActive) return;
+      const plan = getBuyPlan(job, jobState.quantity, eventState.cash, state.buyAmount);
+      const mode = plan.mode;
+      let purchaseQty = 0;
+      if (mode === "max") {
+        purchaseQty = getMaxAffordableJobQuantity(job, jobState.quantity, eventState.cash);
+      } else if (mode === "next") {
+        const target = getNextMilestoneThreshold(jobState.quantity);
+        const needed = target ? Math.max(target - jobState.quantity, 1) : 1;
+        const maxAff = getMaxAffordableJobQuantity(job, jobState.quantity, eventState.cash);
+        purchaseQty = Math.min(needed, maxAff);
+      } else {
+        purchaseQty = plan.qty;
+      }
+      if (!purchaseQty || purchaseQty <= 0) return;
+      const purchaseCost = getJobCost(job, purchaseQty, jobState.quantity);
+      if (eventState.cash < purchaseCost) return;
+      eventState.cash -= purchaseCost;
+      jobState.quantity += purchaseQty;
       saveState();
       render();
     });
@@ -1213,9 +1716,12 @@ function rollLiquid(weights) {
 function openCrate(crateType) {
   const now = Date.now();
   const results = [];
+  let didOpen = false;
+
   if (crateType === "free") {
     const elapsed = now - state.crates.lastFree;
     if (elapsed < GAME_CONFIG.crates.cooldownMs) return;
+    didOpen = true;
     results.push("rare");
     const weights = { uncommon: 50, common: 25, rare: 15, "ultra-rare": 6, epic: 3, legendary: 1 };
     while (results.length < 5) {
@@ -1223,26 +1729,36 @@ function openCrate(crateType) {
     }
     state.crates.lastFree = now;
   }
+
   if (crateType === "cash") {
     if (getCurrentWorldState().cash < 5000) return;
+    didOpen = true;
     getCurrentWorldState().cash -= 5000;
     const weights = { uncommon: 35, common: 30, rare: 20, "ultra-rare": 8, epic: 5, legendary: 2 };
     while (results.length < 5) {
       results.push(rollLiquid(weights));
     }
   }
+
   if (crateType === "ggl") {
     if (state.ggl < 2) return;
+    didOpen = true;
     state.ggl -= 2;
     const weights = { uncommon: 20, common: 25, rare: 25, "ultra-rare": 15, epic: 10, legendary: 4, exotic: 1 };
     while (results.length < 5) {
       results.push(rollLiquid(weights));
     }
   }
+
+  if (!didOpen) return;
+  if (state.stats) state.stats.totalCratesOpened = (state.stats.totalCratesOpened ?? 0) + 1;
+
+  questOnEvent("crate", 1);
   addLiquids(results);
   saveState();
   render();
 }
+
 
 function updateTopBar() {
   const worldState = getCurrentWorldState();
@@ -1255,11 +1771,14 @@ function updateTopBar() {
 }
 
 function updateTimeWarpButton() {
+  if (!timeWarpButton) return;
   timeWarpButton.disabled = state.ggl < GAME_CONFIG.timeWarp.gglCost;
 }
 
-function render() {
+ function render() {
+  renderProfileHeader();
   updateTopBar();
+  syncBuyButtons();
   updateTimeWarpButton();
   renderWorkplaces();
   renderManagers();
@@ -1268,9 +1787,13 @@ function render() {
   renderWorlds();
   renderEvent();
   renderCrates();
+  renderQuests();
+  renderProfile();
 }
 
+
 function tick() {
+  ensureQuests();
   processWorldCycles(state.currentWorldId);
   processEventCycles();
   render();
@@ -1290,12 +1813,378 @@ function formatDuration(ms) {
   return `${seconds}mp`;
 }
 
-prestigeButton.addEventListener("click", () => {
+
+// ===== Quests (Daily / Weekly) =====
+function getDayKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getWeekKey(date = new Date()) {
+  // Monday-based week key: YYYY-MM-DD of the Monday start (local time)
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diffToMonday);
+  return getDayKey(d);
+}
+
+function msUntilNextMidnight(now = new Date()) {
+  const d = new Date(now);
+  const next = new Date(d);
+  next.setHours(24, 0, 0, 0);
+  return next - d;
+}
+
+function msUntilNextMonday(now = new Date()) {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  let daysAhead = (8 - day) % 7;
+  if (daysAhead === 0) daysAhead = 7;
+  const next = new Date(d);
+  next.setDate(d.getDate() + daysAhead);
+  next.setHours(0, 0, 0, 0);
+  return next - now;
+}
+
+function hashToInt(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pickUnique(templates, count, rand, requiredKeys = []) {
+  const pool = templates.slice();
+  // ensure required first
+  const chosen = [];
+  requiredKeys.forEach((key) => {
+    const idx = pool.findIndex((t) => t.key === key);
+    if (idx >= 0) chosen.push(pool.splice(idx, 1)[0]);
+  });
+  // shuffle remaining
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  while (chosen.length < count && pool.length) {
+    chosen.push(pool.shift());
+  }
+  return chosen.slice(0, count);
+}
+
+function getQuestTier() {
+  const worldState = getCurrentWorldState();
+  const le = Math.max(worldState.lifetimeEarnings || 0, 0);
+  const tier = Math.max(1, Math.floor(Math.log10(le + 10)));
+  return tier;
+}
+
+function calcEarnTarget(multiplier) {
+  const worldState = getCurrentWorldState();
+  const le = Math.max(worldState.lifetimeEarnings || 0, 0);
+  const cash = Math.max(worldState.cash || 0, 0);
+  let base = Math.max(500, cash * 25, le * 0.003);
+  base = Math.floor(base / 10) * 10;
+  return Math.max(500, Math.floor(base * multiplier));
+}
+
+function calcUpgradeTarget(multiplier) {
+  const tier = getQuestTier();
+  return Math.max(5, Math.floor((5 + tier * 3) * multiplier));
+}
+
+function calcManagerTarget(multiplier) {
+  const tier = getQuestTier();
+  return Math.max(2, Math.floor((2 + tier) * multiplier));
+}
+
+function calcCrateTarget(multiplier) {
+  const tier = getQuestTier();
+  const base = 1 + Math.floor(tier / 4);
+  return Math.max(1, Math.floor(base * multiplier));
+}
+
+function calcLevelTarget(multiplier) {
+  const tier = getQuestTier();
+  const base = 10 + tier * 5;
+  return Math.max(10, Math.floor(base * multiplier));
+}
+
+function makeQuestId(scope, templateKey) {
+  const key = scope === "daily" ? state.quests.dayKey : state.quests.weekKey;
+  return `${scope}:${key}:${templateKey}`;
+}
+
+function buildQuest(scope, template) {
+  const isDaily = scope === "daily";
+  const multiplier = isDaily ? 1 : 7;
+
+  let target = 0;
+  if (template.type === "earn") target = calcEarnTarget(isDaily ? 1 : 8);
+  if (template.type === "upgrade") target = calcUpgradeTarget(isDaily ? 1 : 4);
+  if (template.type === "manager") target = calcManagerTarget(isDaily ? 1 : 4);
+  if (template.type === "crate") target = calcCrateTarget(isDaily ? 1 : 6);
+  if (template.type === "level_any") target = calcLevelTarget(isDaily ? 1 : 3);
+
+  const reward = getQuestReward(template.type, target, scope);
+
+  const desc = getQuestDescription(template.type, target);
+
+  return {
+    id: makeQuestId(scope, template.key),
+    type: template.type,
+    title: `${template.icon} ${template.title}`,
+    desc,
+    target,
+    progress: 0,
+    claimed: false,
+    reward,
+  };
+}
+
+function getQuestDescription(type, target) {
+  if (type === "earn") return `Keress ${formatNumber(target)} kasszát.`;
+  if (type === "upgrade") return `Vegyél összesen ${target} munka upgrade-et.`;
+  if (type === "manager") return `Vásárolj ${target} menedzser szintet.`;
+  if (type === "crate") return `Nyiss ${target} ládát.`;
+  if (type === "level_any") return `Emelj fel egy munkahelyet ${target} szintig.`;
+  return "Teljesítsd a küldetést.";
+}
+
+function getQuestReward(type, target, scope) {
+  const isDaily = scope === "daily";
+  if (type === "earn") {
+    return isDaily
+      ? { cash: Math.floor(target * 0.25), liquids: { common: 1, uncommon: 1 } }
+      : { ggl: 2, liquids: { rare: 2, common: 3 } };
+  }
+  if (type === "upgrade") {
+    return isDaily
+      ? { liquids: { common: 2, uncommon: 2 } }
+      : { liquids: { ultraRare: 1, epic: 1, uncommon: 5 } };
+  }
+  if (type === "manager") {
+    return isDaily
+      ? { liquids: { uncommon: 2, common: 2 } }
+      : { ggl: 1, liquids: { rare: 3, uncommon: 6 } };
+  }
+  if (type === "crate") {
+    return isDaily
+      ? { liquids: { rare: 1, common: 2 } }
+      : { liquids: { epic: 2, rare: 4 } };
+  }
+  if (type === "level_any") {
+    return isDaily
+      ? { cash: Math.floor(target * 30), liquids: { uncommon: 1, common: 2 } }
+      : { ggl: 1, liquids: { legendary: 1, epic: 2 } };
+  }
+  return isDaily ? { liquids: { common: 2 } } : { liquids: { rare: 2 } };
+}
+
+function ensureQuests() {
+  if (!state.quests) state.quests = structuredClone(defaultState.quests);
+
+  const now = new Date();
+  const dayKey = getDayKey(now);
+  const weekKey = getWeekKey(now);
+
+  let changed = false;
+
+  if (state.quests.dayKey !== dayKey || !Array.isArray(state.quests.daily) || state.quests.daily.length === 0) {
+    state.quests.dayKey = dayKey;
+    const rand = mulberry32(hashToInt(`${dayKey}|daily`));
+    const templates = pickUnique(QUEST_TEMPLATES.daily, QUEST_CONFIG.dailyCount, rand, ["earn"]);
+    state.quests.daily = templates.map((t) => buildQuest("daily", t));
+    changed = true;
+  }
+
+  if (state.quests.weekKey !== weekKey || !Array.isArray(state.quests.weekly) || state.quests.weekly.length === 0) {
+    state.quests.weekKey = weekKey;
+    const rand = mulberry32(hashToInt(`${weekKey}|weekly`));
+    const templates = pickUnique(QUEST_TEMPLATES.weekly, QUEST_CONFIG.weeklyCount, rand, ["earn", "upgrade"]);
+    state.quests.weekly = templates.map((t) => buildQuest("weekly", t));
+    changed = true;
+  }
+
+  // Derived progress quests (level_any) should reflect current state immediately
+  refreshDerivedQuestProgress();
+
+  if (changed) saveState();
+}
+
+function isQuestComplete(q) {
+  return (q.progress || 0) >= (q.target || 0);
+}
+
+function clampProgress(q) {
+  q.progress = Math.min(Math.max(q.progress || 0, 0), q.target || 0);
+}
+
+function questOnEvent(type, amount = 1) {
+  if (!state.quests) return;
+  const applyTo = (arr) => {
+    arr.forEach((q) => {
+      if (q.claimed) return;
+      if (q.type !== type) return;
+      q.progress = (q.progress || 0) + amount;
+      clampProgress(q);
+    });
+  };
+  if (Array.isArray(state.quests.daily)) applyTo(state.quests.daily);
+  if (Array.isArray(state.quests.weekly)) applyTo(state.quests.weekly);
+}
+
+function refreshDerivedQuestProgress() {
+  if (!state.quests) return;
+  const worldState = getCurrentWorldState();
+  const jobs = getWorldJobs(state.currentWorldId);
+  const maxLevel = jobs.reduce((acc, job) => {
+    const q = getJobState(worldState, job.id).quantity || 0;
+    return Math.max(acc, q);
+  }, 0);
+
+  const applyTo = (arr) => {
+    arr.forEach((q) => {
+      if (q.claimed) return;
+      if (q.type !== "level_any") return;
+      q.progress = maxLevel;
+      clampProgress(q);
+    });
+  };
+
+  if (Array.isArray(state.quests.daily)) applyTo(state.quests.daily);
+  if (Array.isArray(state.quests.weekly)) applyTo(state.quests.weekly);
+}
+
+function normalizeLiquidKey(key) {
+  if (!key) return null;
+  if (key === "ultra-rare") return "ultraRare";
+  return key;
+}
+
+function applyQuestReward(reward) {
+  if (!reward) return;
+  if (reward.cash) getCurrentWorldState().cash += reward.cash;
+  if (reward.ggl) state.ggl += reward.ggl;
+
+  if (reward.liquids) {
+    Object.entries(reward.liquids).forEach(([k, v]) => {
+      const key = normalizeLiquidKey(k);
+      if (!key) return;
+      if (typeof state.gothGirlLiquids[key] !== "number") state.gothGirlLiquids[key] = 0;
+      state.gothGirlLiquids[key] += v;
+    });
+  }
+}
+
+function formatQuestRewardShort(reward) {
+  if (!reward) return "";
+  const parts = [];
+  if (reward.cash) parts.push(`+${formatNumber(reward.cash)} kassza`);
+  if (reward.ggl) parts.push(`+${reward.ggl} GGL`);
+  if (reward.liquids) {
+    const show = Object.entries(reward.liquids)
+      .slice(0, 2)
+      .map(([k, v]) => `${v} ${normalizeLiquidKey(k)}`);
+    if (show.length) parts.push(show.join(", "));
+  }
+  return parts.join(" • ");
+}
+
+function claimQuest(scope, questId) {
+  const list = scope === "daily" ? state.quests.daily : state.quests.weekly;
+  const q = list?.find((item) => item.id === questId);
+  if (!q) return;
+  if (q.claimed) return;
+  if (!isQuestComplete(q)) return;
+
+  applyQuestReward(q.reward);
+  q.claimed = true;
+
+  saveState();
+  render();
+}
+
+function renderQuestList(listEl, scope, quests) {
+  if (!listEl) return;
+  if (!Array.isArray(quests)) {
+    listEl.innerHTML = "";
+    return;
+  }
+
+  const html = quests
+    .map((q) => {
+      const pct = q.target ? Math.min(100, Math.floor(((q.progress || 0) / q.target) * 100)) : 0;
+      const progressText = q.type === "earn" ? `${formatNumber(q.progress || 0)} / ${formatNumber(q.target || 0)}` : `${q.progress || 0} / ${q.target || 0}`;
+      const complete = isQuestComplete(q);
+      const claimed = q.claimed;
+      const claimLabel = claimed ? "Felvéve" : complete ? "Felveszem" : "Folyamatban";
+      const disabled = claimed || !complete;
+      const classes = ["quest-card"];
+      if (complete) classes.push("complete");
+      if (claimed) classes.push("claimed");
+
+      return `
+      <div class="${classes.join(" ")}">
+        <div class="quest-top">
+          <div class="quest-title">${q.title}</div>
+          <div class="quest-reward">${formatQuestRewardShort(q.reward)}</div>
+        </div>
+        <div class="quest-desc">${q.desc}</div>
+        <div class="quest-progress"><span style="width:${pct}%"></span></div>
+        <div class="quest-meta">
+          <div class="muted small">${progressText}</div>
+          <button class="quest-claim ${claimed ? "secondary" : ""}" data-quest-claim="1" data-quest-scope="${scope}" data-quest-id="${q.id}" ${disabled ? "disabled" : ""}>
+            ${claimLabel}
+          </button>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  listEl.innerHTML = html;
+}
+
+function renderQuests() {
+  const activeTab = document.querySelector(".tab-content.active")?.dataset?.tab;
+  if (activeTab !== "quests") return;
+
+  ensureQuests();
+
+  if (dailyResetEl) dailyResetEl.textContent = formatDuration(msUntilNextMidnight(new Date()));
+  if (weeklyResetEl) weeklyResetEl.textContent = formatDuration(msUntilNextMonday(new Date()));
+
+  renderQuestList(dailyQuestListEl, "daily", state.quests.daily);
+  renderQuestList(weeklyQuestListEl, "weekly", state.quests.weekly);
+}
+
+
+if (prestigeButton) prestigeButton.addEventListener("click", () => {
   const worldState = getCurrentWorldState();
   const angels = getAngelTotals(worldState);
   if (angels.upcoming <= 0) return;
+  if (state.stats) state.stats.totalPrestiges = (state.stats.totalPrestiges ?? 0) + 1;
 
-  worldState.cash = 60;
+
+  worldState.cash = 500;
   worldState.jobs = {};
   worldState.managers = {};
   worldState.upgrades.cash = {};
@@ -1307,20 +2196,19 @@ prestigeButton.addEventListener("click", () => {
   render();
 });
 
-buyButtons.addEventListener("click", (event) => {
+if (buyButtons) buyButtons.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
-  const amount = Number(button.dataset.amount);
+  const raw = String(button.dataset.amount ?? "");
+  const amount = raw === "max" || raw === "next" ? raw : Number(raw);
   if (!amount) return;
   state.buyAmount = amount;
-  buyButtons.querySelectorAll(".pill").forEach((pill) => {
-    pill.classList.toggle("active", pill === button);
-  });
+  syncBuyButtons();
   saveState();
   render();
 });
 
-timeWarpButton.addEventListener("click", () => {
+if (timeWarpButton) timeWarpButton.addEventListener("click", () => {
   if (state.ggl < GAME_CONFIG.timeWarp.gglCost) return;
   const worldId = state.currentWorldId;
   const worldState = getCurrentWorldState();
@@ -1341,15 +2229,27 @@ timeWarpButton.addEventListener("click", () => {
   render();
 });
 
-openCrateButton.addEventListener("click", () => openCrate("free"));
-gglCrateButton.addEventListener("click", () => openCrate("ggl"));
-cashCrateButton.addEventListener("click", () => openCrate("cash"));
+if (openCrateButton) openCrateButton.addEventListener("click", () => openCrate("free"));
+if (gglCrateButton) gglCrateButton.addEventListener("click", () => openCrate("ggl"));
+if (cashCrateButton) cashCrateButton.addEventListener("click", () => openCrate("cash"));
 
+ensureQuests();
 applyOfflineEarnings();
 render();
 setInterval(tick, 200);
 
 window.addEventListener("beforeunload", saveState);
+
+if (questsPanelEl) {
+  questsPanelEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-quest-claim]");
+    if (!btn) return;
+    const scope = btn.dataset.questScope;
+    const questId = btn.dataset.questId;
+    claimQuest(scope, questId);
+  });
+}
+
 
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -1358,5 +2258,28 @@ tabButtons.forEach((button) => {
     tabContents.forEach((content) => {
       content.classList.toggle("active", content.dataset.tab === tab);
     });
+    render();
   });
 });
+
+if (profileSaveNicknameButton) {
+  profileSaveNicknameButton.addEventListener("click", () => {
+    setNickname(profileNicknameInput?.value ?? "");
+  });
+}
+
+if (profileNicknameInput) {
+  profileNicknameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      setNickname(profileNicknameInput.value);
+      profileNicknameInput.blur();
+    }
+  });
+}
+
+if (profileBadgeSortEl) {
+  profileBadgeSortEl.addEventListener("change", () => {
+    setBadgeSort(profileBadgeSortEl.value);
+  });
+}
