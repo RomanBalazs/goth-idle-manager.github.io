@@ -16,17 +16,19 @@
           </div>
           <div>
             <h1>Goth Girl IDLE Manager</h1>
-            <p class="tagline">Gót menedzserek, munkahelyek, és lassan hömpölygő profit.</p>
+            <p class="player-line"><span id="player-badge">🖤</span> <span id="player-nickname">Player</span></p>
           </div>
         </div>
         <nav class="menu">
-          <button class="menu-button active" data-tab="workplaces">Munkahelyek</button>
+		  <button class="menu-button" data-tab="profile">Profil</button>
+                    <button class="menu-button" data-tab="quests">Küldetések</button>
+<button class="menu-button active" data-tab="workplaces">Munkahelyek</button>
           <button class="menu-button" data-tab="managers">Menedzserek</button>
           <button class="menu-button" data-tab="upgrades">Fejlesztések</button>
           <button class="menu-button" data-tab="prestige">Prestige</button>
           <button class="menu-button" data-tab="worlds">Világok</button>
           <button class="menu-button" data-tab="events">Eventek</button>
-          <button class="menu-button" data-tab="crates">Crates &amp; Girls</button>
+          <button class="menu-button" data-tab="crates">Ládák és Táska</button>
           <button class="menu-button" data-tab="guide">Goth Guide</button>
         </nav>
       </aside>
@@ -57,6 +59,8 @@
               <button class="pill active" data-amount="1">x1</button>
               <button class="pill" data-amount="10">x10</button>
               <button class="pill" data-amount="100">x100</button>
+              <button class="pill" data-amount="next" title="Következő mérföldkőig vásárlás">NEXT</button>
+              <button class="pill" data-amount="max" title="Vásárlás maximumra a rendelkezésre álló pénzből">MAX</button>
             </div>
           </div>
         </header>
@@ -174,6 +178,75 @@
             </div>
             <div id="girl-list" class="card-list"></div>
           </section>
+		  
+		  
+<section class="panel tab-content" data-tab="quests">
+  <div class="panel-header">
+    <h2>Küldetések</h2>
+    <p class="muted">Napi és heti kihívások jutalmakkal. Fejezd be őket, és vedd fel a jutalmat!</p>
+  </div>
+
+  <div class="quests-grid">
+    <div class="card">
+      <div class="quests-head">
+        <h3>Napi küldetések</h3>
+        <div class="muted small">Reset: <span id="daily-reset">--:--:--</span></div>
+      </div>
+      <div id="daily-quest-list" class="quest-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="quests-head">
+        <h3>Heti küldetések</h3>
+        <div class="muted small">Reset: <span id="weekly-reset">--:--:--</span></div>
+      </div>
+      <div id="weekly-quest-list" class="quest-list"></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel tab-content" data-tab="profile">
+  <div class="panel-header">
+    <h2>Profil</h2>
+    <p class="muted">Nicknév és badge-ek. (Az achievementek és küldetések itt kapnak majd helyet.)</p>
+  </div>
+
+  <div class="profile-grid">
+    <div class="card">
+      <h3>Nicknév</h3>
+      <div class="field-row">
+        <input id="profile-nickname" type="text" maxlength="16" placeholder="Nicknév" />
+        <button id="profile-save-nickname">Mentés</button>
+      </div>
+      <p class="muted small">Max 16 karakter. Tip: rövid név + badge jobban mutat ikonként is.</p>
+
+      <div class="divider"></div>
+
+      <h3>Aktív badge</h3>
+      <div id="profile-selected-badge" class="selected-badge">-</div>
+    </div>
+
+    <div class="card">
+      <h3>Badge-ek</h3>
+      <p class="muted small">A zártak automatikusan feloldódnak, ahogy haladsz.</p>
+      <div class="badge-controls">
+        <label class="muted small" for="profile-badge-sort">Rendezés</label>
+        <select id="profile-badge-sort" aria-label="Badge rendezés">
+          <option value="status">Állapot</option>
+          <option value="progress">Haladás</option>
+          <option value="name">A–Z</option>
+        </select>
+      </div>
+      <div id="profile-badge-grid" class="badge-grid"></div>
+    </div>
+  </div>
+
+  <div class="card profile-stats-card">
+    <h3>Statisztika</h3>
+    <div id="profile-stats" class="profile-stats"></div>
+  </div>
+</section>
+
 
           <section class="panel tab-content" data-tab="guide">
             <h2>Goth Girl útmutató</h2>
