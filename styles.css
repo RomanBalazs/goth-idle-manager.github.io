@@ -980,3 +980,181 @@ footer {
   color: var(--text);
 }
 
+
+
+/* ===== FX / UI Feedback ===== */
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.fx-banner-host {
+  position: absolute;
+  top: 86px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.fx-banner {
+  background: rgba(15, 13, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f7f5ff;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.65rem; /* squared-ish */
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  transform: translateY(-8px);
+  opacity: 0;
+  animation: fxBannerIn 180ms ease forwards;
+}
+
+.fx-banner.good {
+  border-color: rgba(154, 230, 110, 0.35);
+}
+
+.fx-banner.info {
+  border-color: rgba(95, 217, 255, 0.35);
+}
+
+.fx-banner.out {
+  animation: fxBannerOut 180ms ease forwards;
+}
+
+@keyframes fxBannerIn {
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fxBannerOut {
+  to { transform: translateY(-10px); opacity: 0; }
+}
+
+.fx-toast-host {
+  position: absolute;
+  top: 86px;
+  right: 14px;
+  display: grid;
+  gap: 0.55rem;
+  width: min(340px, calc(100vw - 28px));
+}
+
+.fx-toast {
+  background: rgba(15, 13, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f7f5ff;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.65rem;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  transform: translateX(12px);
+  opacity: 0;
+  animation: fxToastIn 180ms ease forwards;
+}
+
+.fx-toast.good { border-color: rgba(154, 230, 110, 0.35); }
+.fx-toast.info { border-color: rgba(95, 217, 255, 0.35); }
+
+.fx-toast-title {
+  font-weight: 900;
+  margin-bottom: 0.15rem;
+}
+
+.fx-toast-body {
+  opacity: 0.85;
+  font-size: 0.92rem;
+}
+
+.fx-toast.out {
+  animation: fxToastOut 200ms ease forwards;
+}
+
+@keyframes fxToastIn {
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fxToastOut {
+  to { transform: translateX(16px); opacity: 0; }
+}
+
+.fx-pop {
+  position: fixed;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.6rem;
+  background: rgba(15, 13, 20, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  transform: translate(-50%, 0);
+  opacity: 0;
+  animation: fxPopUp 950ms ease forwards;
+  white-space: nowrap;
+}
+
+.fx-pop.cash { color: var(--accent-2); }
+.fx-pop.event { color: var(--accent); }
+
+@keyframes fxPopUp {
+  0% { transform: translate(-50%, 2px) scale(0.98); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(-50%, -26px) scale(1.02); opacity: 0; }
+}
+
+/* Card flashes */
+.fx-flash {
+  animation: fxFlash 280ms ease;
+}
+
+.fx-flash-good {
+  animation: fxFlashGood 280ms ease;
+}
+
+@keyframes fxFlash {
+  0% { box-shadow: 0 0 0 rgba(240,117,180,0); }
+  40% { box-shadow: 0 0 0.0rem rgba(240,117,180,0.0), 0 0 0.65rem rgba(240,117,180,0.35); }
+  100% { box-shadow: 0 0 0 rgba(240,117,180,0); }
+}
+
+@keyframes fxFlashGood {
+  0% { box-shadow: 0 0 0 rgba(154,230,110,0); }
+  40% { box-shadow: 0 0 0.65rem rgba(154,230,110,0.35); }
+  100% { box-shadow: 0 0 0 rgba(154,230,110,0); }
+}
+
+/* Top bar pulses */
+.fx-pulse-cash {
+  animation: fxPulseCash 380ms ease;
+}
+
+.fx-pulse-ggl {
+  animation: fxPulseGgl 380ms ease;
+}
+
+.fx-pulse-angels {
+  animation: fxPulseAngels 380ms ease;
+}
+
+@keyframes fxPulseCash {
+  0% { transform: scale(1); text-shadow: none; }
+  50% { transform: scale(1.07); text-shadow: 0 0 16px rgba(95,217,255,0.45); }
+  100% { transform: scale(1); text-shadow: none; }
+}
+
+@keyframes fxPulseGgl {
+  0% { transform: scale(1); text-shadow: none; }
+  50% { transform: scale(1.07); text-shadow: 0 0 16px rgba(240,117,180,0.55); }
+  100% { transform: scale(1); text-shadow: none; }
+}
+
+@keyframes fxPulseAngels {
+  0% { transform: scale(1); text-shadow: none; }
+  50% { transform: scale(1.07); text-shadow: 0 0 16px rgba(154,230,110,0.45); }
+  100% { transform: scale(1); text-shadow: none; }
+}
+
+/* Smoother progress bars */
+.workplace-progress span {
+  transition: width 160ms linear;
+}

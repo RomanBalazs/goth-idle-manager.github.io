@@ -509,6 +509,210 @@ const dailyResetEl = document.getElementById("daily-reset");
 const weeklyResetEl = document.getElementById("weekly-reset");
 const questsPanelEl = document.querySelector('.tab-content[data-tab="quests"]');
 
+// ===== FX / UI Feedback (payout pops, flashes, toasts) =====
+const FX = {
+  queue: [],
+  payoutPopLast: new Map(), // key: "worldId:jobId" -> timestamp
+  bannerLastAt: 0,
+  toastLastAt: 0,
+  topLast: { cash: null, ggl: null, angels: null },
+  topWorldId: null,
+};
+
+const FX_CONFIG = {
+  payoutPopThrottleMs: 900,
+  bannerThrottleMs: 700,
+  toastThrottleMs: 220,
+  popLifetimeMs: 950,
+  toastLifetimeMs: 2400,
+  bannerLifetimeMs: 1600,
+};
+
+function isTabActive(tabId) {
+  const active = document.querySelector('.tab-content.active');
+  return active?.dataset?.tab === tabId;
+}
+
+function fxEnsureLayers() {
+  let layer = document.getElementById('fx-layer');
+  if (layer) return layer;
+  layer = document.createElement('div');
+  layer.id = 'fx-layer';
+  layer.className = 'fx-layer';
+  layer.innerHTML = `
+    <div id="fx-banner-host" class="fx-banner-host"></div>
+    <div id="fx-toast-host" class="fx-toast-host"></div>
+  `;
+  document.body.appendChild(layer);
+  return layer;
+}
+
+function fxEnqueue(evt) {
+  FX.queue.push({ ...evt, __t: Date.now() });
+}
+
+function fxPulse(el, className) {
+  if (!el) return;
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+  window.setTimeout(() => el.classList.remove(className), 520);
+}
+
+function fxFlash(el, className = 'fx-flash') {
+  if (!el) return;
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+  window.setTimeout(() => el.classList.remove(className), 380);
+}
+
+function fxPopAt(anchorEl, text, variant = 'cash') {
+  if (!anchorEl) return;
+  const layer = fxEnsureLayers();
+  const pop = document.createElement('div');
+  pop.className = `fx-pop ${variant}`.trim();
+  pop.textContent = text;
+
+  const rect = anchorEl.getBoundingClientRect();
+  const x = rect.left + rect.width * 0.5;
+  const y = rect.top + rect.height * 0.15;
+
+  pop.style.left = `${x}px`;
+  pop.style.top = `${y}px`;
+
+  layer.appendChild(pop);
+  window.setTimeout(() => pop.remove(), FX_CONFIG.popLifetimeMs);
+}
+
+function fxBanner(text, variant = 'info') {
+  const now = Date.now();
+  if (now - FX.bannerLastAt < FX_CONFIG.bannerThrottleMs) return;
+  FX.bannerLastAt = now;
+
+  fxEnsureLayers();
+  const host = document.getElementById('fx-banner-host');
+  if (!host) return;
+
+  const el = document.createElement('div');
+  el.className = `fx-banner ${variant}`.trim();
+  el.textContent = text;
+  host.appendChild(el);
+
+  window.setTimeout(() => el.classList.add('out'), FX_CONFIG.bannerLifetimeMs - 220);
+  window.setTimeout(() => el.remove(), FX_CONFIG.bannerLifetimeMs);
+}
+
+function fxToast(title, body = '', variant = 'info') {
+  const now = Date.now();
+  if (now - FX.toastLastAt < FX_CONFIG.toastThrottleMs) return;
+  FX.toastLastAt = now;
+
+  fxEnsureLayers();
+  const host = document.getElementById('fx-toast-host');
+  if (!host) return;
+
+  const el = document.createElement('div');
+  el.className = `fx-toast ${variant}`.trim();
+  el.innerHTML = `<div class="fx-toast-title">${title}</div>${body ? `<div class="fx-toast-body">${body}</div>` : ''}`;
+  host.appendChild(el);
+
+  window.setTimeout(() => el.classList.add('out'), FX_CONFIG.toastLifetimeMs - 260);
+  window.setTimeout(() => el.remove(), FX_CONFIG.toastLifetimeMs);
+}
+
+function fxFlush() {
+  if (!FX.queue.length) return;
+  const events = FX.queue.splice(0, FX.queue.length);
+  const now = Date.now();
+
+  events.forEach((evt) => {
+    if (evt.type === 'payout') {
+      // Only show pops on active workplace tab + current world
+      if (!isTabActive('workplaces')) return;
+      if (evt.worldId !== state.currentWorldId) return;
+
+      const key = `${evt.worldId}:${evt.jobId}`;
+      const last = FX.payoutPopLast.get(key) || 0;
+      if (now - last < FX_CONFIG.payoutPopThrottleMs) return;
+      FX.payoutPopLast.set(key, now);
+
+      const icon = document.querySelector(`.workplace-card[data-job-id="${evt.jobId}"] .workplace-icon`);
+      if (!icon) return;
+      fxPopAt(icon, `+${formatNumber(evt.amount)}`, 'cash');
+      return;
+    }
+
+    if (evt.type === 'event_payout') {
+      if (!isTabActive('event')) return;
+      const key = `event:${evt.jobId}`;
+      const last = FX.payoutPopLast.get(key) || 0;
+      if (now - last < FX_CONFIG.payoutPopThrottleMs) return;
+      FX.payoutPopLast.set(key, now);
+
+      const icon = document.querySelector(`.workplace-card[data-event-job-id="${evt.jobId}"] .workplace-icon`);
+      if (!icon) return;
+      fxPopAt(icon, `+${formatNumber(evt.amount)}`, 'event');
+      return;
+    }
+
+    if (evt.type === 'work_start') {
+      const card = document.querySelector(`.workplace-card[data-job-id="${evt.jobId}"]`);
+      fxFlash(card, 'fx-flash');
+      return;
+    }
+
+    if (evt.type === 'buy_upgrade') {
+      const card = document.querySelector(`.workplace-card[data-job-id="${evt.jobId}"]`);
+      fxFlash(card, 'fx-flash');
+      if (evt.milestone) fxBanner(`Mérföldkő: ${evt.milestone}`, 'good');
+      return;
+    }
+
+    if (evt.type === 'buy_manager') {
+      const card = document.querySelector(`.card[data-manager-id="${evt.managerId}"]`);
+      fxFlash(card, 'fx-flash');
+      return;
+    }
+
+    if (evt.type === 'upgrade_manager_rarity') {
+      const card = document.querySelector(`.card[data-manager-id="${evt.managerId}"]`);
+      fxFlash(card, 'fx-flash-good');
+      fxBanner(`Ritkaság +1`, 'good');
+      return;
+    }
+
+    if (evt.type === 'buy_upgrade_card') {
+      fxFlash(evt.el, 'fx-flash');
+      return;
+    }
+
+    if (evt.type === 'quest_complete') {
+      fxBanner(`Küldetés kész! ${evt.title}`, 'good');
+      fxToast('Küldetés kész!', evt.title, 'good');
+      return;
+    }
+
+    if (evt.type === 'quest_claim') {
+      const rewardText = typeof formatQuestRewardShort === 'function' ? formatQuestRewardShort(evt.reward) : '';
+      fxToast('Jutalom felvéve', rewardText, 'good');
+      return;
+    }
+
+    if (evt.type === 'crate_open') {
+      fxBanner('Láda nyitva!', 'info');
+      fxToast('Láda nyitva', evt.summary || '', 'info');
+      return;
+    }
+
+    if (evt.type === 'prestige') {
+      fxBanner('Prestige!', 'good');
+      return;
+    }
+  });
+}
+
+
 function syncBuyButtons() {
   if (!buyButtons) return;
   const normalized = normalizeBuyMode(state.buyAmount);
@@ -582,6 +786,16 @@ function initState(nextState) {
   if (!Array.isArray(nextState.quests.weekly)) nextState.quests.weekly = [];
   if (typeof nextState.quests.dayKey !== "string") nextState.quests.dayKey = null;
   if (typeof nextState.quests.weekKey !== "string") nextState.quests.weekKey = null;
+
+  // Backfill quest flags
+  const fixQuestFlags = (arr) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach((q) => {
+      if (typeof q.notifiedComplete !== 'boolean') q.notifiedComplete = false;
+    });
+  };
+  fixQuestFlags(nextState.quests.daily);
+  fixQuestFlags(nextState.quests.weekly);
 
   if (!nextState.gothGirls.owned) {
     nextState.gothGirls.owned = {};
@@ -1120,6 +1334,7 @@ function applyPayout(worldId, jobId) {
   worldState.cash += payout;
   worldState.lifetimeEarnings += payout;
   questOnEvent("earn", payout);
+  fxEnqueue({ type: 'payout', worldId, jobId, amount: payout });
 }
 
 function processWorldCycles(worldId) {
@@ -1195,6 +1410,7 @@ function renderWorkplaces() {
 
     const card = document.createElement("div");
     card.className = "workplace-card";
+    card.dataset.jobId = job.id;
     card.innerHTML = `
       <div class="workplace-icon">${job.icon}</div>
       <div class="workplace-info">
@@ -1244,6 +1460,7 @@ function renderWorkplaces() {
     card.querySelector(".work-button").addEventListener("click", () => {
       if (jobState.quantity <= 0 || jobState.cycleEnd) return;
       startJobCycle(worldId, job.id);
+      fxEnqueue({ type: "work_start", worldId, jobId: job.id });
       if (state.stats) state.stats.totalClicks = (state.stats.totalClicks ?? 0) + 1;
       saveState();
       render();
@@ -1267,7 +1484,15 @@ function renderWorkplaces() {
       const purchaseCost = getJobCost(job, purchaseQty, jobState.quantity);
       if (worldState.cash < purchaseCost) return;
       worldState.cash -= purchaseCost;
+      const prevQty = jobState.quantity;
       jobState.quantity += purchaseQty;
+      // Milestone feedback (only if a new threshold was crossed)
+      const hits = GAME_CONFIG.milestones
+        .map((m) => m.threshold)
+        .sort((a, b) => a - b)
+        .filter((t) => prevQty < t && jobState.quantity >= t);
+      const milestone = hits.length ? hits[hits.length - 1] : null;
+      fxEnqueue({ type: "buy_upgrade", worldId, jobId: job.id, qty: purchaseQty, milestone });
       if (state.stats) state.stats.totalUpgradesBought = (state.stats.totalUpgradesBought ?? 0) + purchaseQty;
       questOnEvent("upgrade", purchaseQty);
       refreshDerivedQuestProgress();
@@ -1320,6 +1545,7 @@ function renderManagers() {
     const canUpgradeRarity = managerState.level === rarity.maxLevel && managerState.rarityIndex < MANAGER_RARITIES.length - 1;
     const card = document.createElement("div");
     card.className = "card";
+    card.dataset.managerId = manager.id;
     card.innerHTML = `
       <div>
         <h3>${manager.name}</h3>
@@ -1352,6 +1578,7 @@ function renderManagers() {
       worldState.cash -= levelCost;
       managerState.owned = true;
       managerState.level = nextLevel;
+      fxEnqueue({ type: "buy_manager", worldId, managerId: manager.id, level: nextLevel });
       if (state.stats) state.stats.totalManagersBought = (state.stats.totalManagersBought ?? 0) + 1;
       questOnEvent("manager", 1);
       refreshDerivedQuestProgress();
@@ -1369,6 +1596,7 @@ function renderManagers() {
       if (available < rarity.liquidCost) return;
       state.gothGirlLiquids[liquidKey] -= rarity.liquidCost;
       managerState.rarityIndex += 1;
+      fxEnqueue({ type: "upgrade_manager_rarity", worldId, managerId: manager.id });
       saveState();
       render();
     });
@@ -1579,6 +1807,7 @@ function renderEvent() {
 
     const card = document.createElement("div");
     card.className = "workplace-card";
+    card.dataset.eventJobId = job.id;
     card.innerHTML = `
       <div class="workplace-icon">${job.icon}</div>
       <div class="workplace-info">
@@ -1652,6 +1881,7 @@ function processEventCycles() {
       const payout = job.baseProfit * jobState.quantity;
       eventState.cash += payout;
       eventState.lifetimeEarnings += payout;
+      fxEnqueue({ type: 'event_payout', jobId: job.id, amount: payout });
       jobState.cycleStart = now;
       jobState.cycleEnd = now + job.cycleTimeSeconds * 1000;
     }
@@ -1755,6 +1985,18 @@ function openCrate(crateType) {
 
   questOnEvent("crate", 1);
   addLiquids(results);
+  // UI feedback: summarize loot
+  const counts = results.reduce((acc, id) => {
+    acc[id] = (acc[id] || 0) + 1;
+    return acc;
+  }, {});
+  const order = ['exotic','legendary','epic','ultra-rare','rare','uncommon','common'];
+  const parts = order
+    .filter((k) => counts[k])
+    .map((k) => `${k} x${counts[k]}`)
+    .slice(0, 3);
+  const summary = parts.join(' • ');
+  fxEnqueue({ type: 'crate_open', crateType, summary });
   saveState();
   render();
 }
@@ -1764,10 +2006,32 @@ function updateTopBar() {
   const worldState = getCurrentWorldState();
   const angels = getAngelTotals(worldState);
   const world = getWorldConfig(state.currentWorldId);
+
+  // Reset pulse baselines when world changes
+  if (FX.topWorldId !== state.currentWorldId) {
+    FX.topWorldId = state.currentWorldId;
+    FX.topLast.cash = worldState.cash;
+    FX.topLast.ggl = state.ggl;
+    FX.topLast.angels = angels.available;
+  }
+
+  const prevCash = FX.topLast.cash;
+  const prevGgl = FX.topLast.ggl;
+  const prevAngels = FX.topLast.angels;
+
   currentWorldEl.textContent = world.name;
   cashEl.textContent = formatNumber(worldState.cash);
   gglEl.textContent = state.ggl.toFixed(0);
   angelsEl.textContent = angels.available.toFixed(0);
+
+  // Pulse when values increase
+  if (typeof prevCash === 'number' && worldState.cash > prevCash) fxPulse(cashEl, 'fx-pulse-cash');
+  if (typeof prevGgl === 'number' && state.ggl > prevGgl) fxPulse(gglEl, 'fx-pulse-ggl');
+  if (typeof prevAngels === 'number' && angels.available > prevAngels) fxPulse(angelsEl, 'fx-pulse-angels');
+
+  FX.topLast.cash = worldState.cash;
+  FX.topLast.ggl = state.ggl;
+  FX.topLast.angels = angels.available;
 }
 
 function updateTimeWarpButton() {
@@ -1789,6 +2053,7 @@ function updateTimeWarpButton() {
   renderCrates();
   renderQuests();
   renderProfile();
+  fxFlush();
 }
 
 
@@ -1957,6 +2222,7 @@ function buildQuest(scope, template) {
     progress: 0,
     claimed: false,
     reward,
+    notifiedComplete: false,
   };
 }
 
@@ -2040,16 +2306,22 @@ function clampProgress(q) {
 
 function questOnEvent(type, amount = 1) {
   if (!state.quests) return;
-  const applyTo = (arr) => {
+  const applyTo = (arr, scope) => {
     arr.forEach((q) => {
       if (q.claimed) return;
       if (q.type !== type) return;
+      const wasComplete = isQuestComplete(q);
       q.progress = (q.progress || 0) + amount;
       clampProgress(q);
+      const nowComplete = isQuestComplete(q);
+      if (!wasComplete && nowComplete && !q.notifiedComplete) {
+        q.notifiedComplete = true;
+        fxEnqueue({ type: 'quest_complete', scope, questId: q.id, title: q.title });
+      }
     });
   };
-  if (Array.isArray(state.quests.daily)) applyTo(state.quests.daily);
-  if (Array.isArray(state.quests.weekly)) applyTo(state.quests.weekly);
+  if (Array.isArray(state.quests.daily)) applyTo(state.quests.daily, 'daily');
+  if (Array.isArray(state.quests.weekly)) applyTo(state.quests.weekly, 'weekly');
 }
 
 function refreshDerivedQuestProgress() {
@@ -2061,17 +2333,23 @@ function refreshDerivedQuestProgress() {
     return Math.max(acc, q);
   }, 0);
 
-  const applyTo = (arr) => {
+  const applyTo = (arr, scope) => {
     arr.forEach((q) => {
       if (q.claimed) return;
-      if (q.type !== "level_any") return;
+      if (q.type !== 'level_any') return;
+      const wasComplete = isQuestComplete(q);
       q.progress = maxLevel;
       clampProgress(q);
+      const nowComplete = isQuestComplete(q);
+      if (!wasComplete && nowComplete && !q.notifiedComplete) {
+        q.notifiedComplete = true;
+        fxEnqueue({ type: 'quest_complete', scope, questId: q.id, title: q.title });
+      }
     });
   };
 
-  if (Array.isArray(state.quests.daily)) applyTo(state.quests.daily);
-  if (Array.isArray(state.quests.weekly)) applyTo(state.quests.weekly);
+  if (Array.isArray(state.quests.daily)) applyTo(state.quests.daily, 'daily');
+  if (Array.isArray(state.quests.weekly)) applyTo(state.quests.weekly, 'weekly');
 }
 
 function normalizeLiquidKey(key) {
@@ -2118,6 +2396,7 @@ function claimQuest(scope, questId) {
 
   applyQuestReward(q.reward);
   q.claimed = true;
+  fxEnqueue({ type: 'quest_claim', title: q.title, reward: q.reward });
 
   saveState();
   render();
@@ -2192,6 +2471,7 @@ if (prestigeButton) prestigeButton.addEventListener("click", () => {
   worldState.angelsClaimed = angels.total;
   worldState.angelsSpent = 0;
   state.ggl += 1;
+  fxEnqueue({ type: 'prestige' });
   saveState();
   render();
 });
