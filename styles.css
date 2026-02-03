@@ -592,11 +592,19 @@ footer {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
   }
 
   .menu {
     grid-auto-flow: column;
     grid-auto-columns: minmax(120px, 1fr);
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+  }
+
+  .menu-button {
+    white-space: nowrap;
   }
 }
 
@@ -604,10 +612,13 @@ footer {
   .sidebar {
     flex-direction: column;
     align-items: stretch;
+    padding: 1.5rem 1.25rem;
   }
 
   .top-bar {
     padding: 1.5rem;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .layout {
@@ -616,6 +627,20 @@ footer {
 
   footer {
     padding: 0 1.5rem 2rem;
+  }
+
+  .currency-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
+  .buy-panel {
+    width: 100%;
+  }
+
+  .buy-buttons {
+    justify-content: space-between;
   }
 
   .workplace-card {
@@ -630,6 +655,68 @@ footer {
   .time-warp {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .crate-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 540px) {
+  .profile-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .menu {
+    grid-auto-columns: minmax(110px, 1fr);
+    gap: 0.5rem;
+  }
+
+  .menu-button {
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.85rem;
+  }
+
+  .currency-strip .value {
+    font-size: 1.25rem;
+  }
+
+  .panel {
+    padding: 1.1rem;
+  }
+
+  .workplace-actions,
+  .card button,
+  .workplace-actions button {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .badge-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .quests-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fx-toast-host {
+    right: 10px;
+    top: 72px;
+    width: min(320px, calc(100vw - 20px));
   }
 }
 /* ===== Profile (nickname + badges) ===== */
