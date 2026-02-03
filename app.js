@@ -501,6 +501,8 @@ const profileBadgeGrid = document.getElementById("profile-badge-grid");
 const profileSelectedBadgeEl = document.getElementById("profile-selected-badge");
 const profileStatsEl = document.getElementById("profile-stats");
 const profileBadgeSortEl = document.getElementById("profile-badge-sort");
+const milestoneSummaryEl = document.getElementById("milestone-summary");
+const milestoneListEl = document.getElementById("milestone-list");
 
 
 const dailyQuestListEl = document.getElementById("daily-quest-list");
@@ -1257,6 +1259,12 @@ function getNextMilestoneThreshold(currentQuantity) {
   return thresholds.find((t) => t > currentQuantity) ?? null;
 }
 
+function formatMilestoneEffect(milestone) {
+  if (milestone.type === "profit") return `Profit x${milestone.multiplier}`;
+  if (milestone.type === "speed") return `Sebesség x${milestone.multiplier}`;
+  return "Bónusz";
+}
+
 function getMaxAffordableJobQuantity(job, currentQuantity, cash) {
   const r = job.costGrowth;
   const startCost = job.baseCost * Math.pow(r, currentQuantity);
@@ -1695,6 +1703,69 @@ function renderUpgrades() {
   });
 }
 
+function renderMilestones() {
+  const activeTab = document.querySelector(".tab-content.active")?.dataset?.tab;
+  if (activeTab !== "milestones") return;
+  const worldState = getCurrentWorldState();
+  const jobs = getWorldJobs(state.currentWorldId);
+  const requirement = GAME_CONFIG.globalMilestone.threshold;
+  const jobsReached = jobs.filter((job) => getJobState(worldState, job.id).quantity >= requirement).length;
+  const totalJobs = jobs.length;
+  const globalProgress = totalJobs ? jobsReached / totalJobs : 0;
+  const globalReached = jobsReached === totalJobs && totalJobs > 0;
+
+  milestoneSummaryEl.innerHTML = `
+    <div>
+      <h3>Globális mérföldkő</h3>
+      <p class="muted">Minden munkahely érje el a ${requirement}. szintet.</p>
+    </div>
+    <div class="meta">
+      <span>Teljesítve: ${jobsReached} / ${totalJobs}</span>
+      <span>${globalReached ? "Aktív bónuszok" : "Folyamatban"}</span>
+    </div>
+    <div class="milestone-progress"><span style="width:${(globalProgress * 100).toFixed(0)}%"></span></div>
+    <div class="meta">
+      <span>Profit x${GAME_CONFIG.globalMilestone.profitMultiplier}</span>
+      <span>Sebesség x${GAME_CONFIG.globalMilestone.speedMultiplier}</span>
+    </div>
+  `;
+
+  milestoneListEl.innerHTML = "";
+  jobs.forEach((job) => {
+    const jobState = getJobState(worldState, job.id);
+    const nextThreshold = getNextMilestoneThreshold(jobState.quantity);
+    const nextLabel = nextThreshold ? `${nextThreshold}. szint` : "Minden mérföldkő kész";
+    const progressToNext = nextThreshold ? Math.min(jobState.quantity / nextThreshold, 1) : 1;
+    const milestoneItems = GAME_CONFIG.milestones
+      .map((milestone) => {
+        const reached = jobState.quantity >= milestone.threshold;
+        return `
+          <li class="milestone-item ${reached ? "reached" : ""}">
+            <span>${milestone.threshold}. szint</span>
+            <span>${formatMilestoneEffect(milestone)}</span>
+          </li>
+        `;
+      })
+      .join("");
+
+    const card = document.createElement("div");
+    card.className = "card milestone-card";
+    card.innerHTML = `
+      <div>
+        <h3>${job.name}</h3>
+        <p class="muted">Jelenlegi szint: ${jobState.quantity}</p>
+      </div>
+      <div class="meta">
+        <span>Következő: ${nextLabel}</span>
+        <span>${Math.round(progressToNext * 100)}%</span>
+      </div>
+      <div class="milestone-progress"><span style="width:${(progressToNext * 100).toFixed(0)}%"></span></div>
+      <ul class="milestone-list-items">${milestoneItems}</ul>
+    `;
+    milestoneListEl.appendChild(card);
+  });
+}
+
 function updatePrestigeUI() {
   const worldState = getCurrentWorldState();
   const angels = getAngelTotals(worldState);
@@ -2047,6 +2118,7 @@ function updateTimeWarpButton() {
   renderWorkplaces();
   renderManagers();
   renderUpgrades();
+  renderMilestones();
   updatePrestigeUI();
   renderWorlds();
   renderEvent();
