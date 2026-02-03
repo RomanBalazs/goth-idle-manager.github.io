@@ -198,7 +198,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "next-bonus",
-+    title: "NEXT vásárlási bónusz",
++    title: "NEXT Vásárlási Bónusz",
 +    items: [
 +      {
 +        id: "next-magic",
@@ -216,7 +216,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "workplace-mastery",
-+    title: "Munkahely mastery",
++    title: "Munkahely Szint Gyűjtés",
 +    items: [
 +      {
 +        id: "workplace-maniac",
@@ -234,7 +234,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "workplace-scaling-50",
-+    title: "Haladó munkahely fejlesztés",
++    title: "Haladó Munkahely Fejlesztés (50. Szint)",
 +    items: [
 +      {
 +        id: "scaling-50",
@@ -252,7 +252,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "workplace-scaling-100",
-+    title: "Mesteri munkahely elérése",
++    title: "Mesteri Munkahely Elérése (100. Szint)",
 +    items: [
 +      {
 +        id: "scaling-100",
@@ -270,7 +270,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "automation-boost",
-+    title: "Automatizálási gyorsítás",
++    title: "Automatizálási Gyorsítás",
 +    items: [
 +      {
 +        id: "auto-rush",
@@ -288,7 +288,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "global-milestone",
-+    title: "Teljes körű mérföldkő elérése",
++    title: "Teljes Körű Mérföldkő Elérése",
 +    items: [
 +      {
 +        id: "all-business",
@@ -301,7 +301,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "managers",
-+    title: "Menedzser és automatizálás",
++    title: "Manager and Automation Goals",
 +    items: [
 +      {
 +        id: "first-manager",
@@ -382,7 +382,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "energy-drinks",
-+    title: "Energy Drink Acquisition",
++    title: "Energy Drink Acquisitions and Upgrades",
 +    items: [
 +      {
 +        id: "first-energy",
@@ -402,7 +402,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "ggl-premium",
-+    title: "Goth Girl Liquid és Premium",
++    title: "Goth Girl Liquid and Premium Upgrades",
 +    items: [
 +      {
 +        id: "ggl-touch",
@@ -422,7 +422,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "time-warp",
-+    title: "Time Warp használat",
++    title: "Time Warp Ability Usage Milestones",
 +    items: [
 +      {
 +        id: "time-warp-1",
@@ -447,7 +447,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "prestige",
-+    title: "Prestige / Reset mastery",
++    title: "Mastery Prestige and Reset",
 +    items: [
 +      {
 +        id: "first-prestige",
@@ -479,7 +479,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "performance",
-+    title: "Teljesítmény és bónuszok",
++    title: "Teljesítmény és Bónuszok Elérése",
 +    items: [
 +      {
 +        id: "lifetime-legend",
@@ -509,7 +509,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "worlds",
-+    title: "Világok felfedezése és mesterré válása",
++    title: "Világok Felfedezése és Mesterré Válása",
 +    items: [
 +      {
 +        id: "first-world-hop",
@@ -575,7 +575,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "crates",
-+    title: "Ládák / Loot",
++    title: "Loot Box Rewards",
 +    items: [
 +      {
 +        id: "first-free-crate",
@@ -637,7 +637,7 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +  },
 +  {
 +    id: "profile",
-+    title: "Profil / Badge / Küldetések",
++    title: "Profile Initialization",
 +    items: [
 +      {
 +        id: "profile-awake",
@@ -646,6 +646,12 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +        desc: "Adj meg nicknevet és mentsd el.",
 +        unlock: (s) => (s.stats?.nicknameSet ?? 0) >= 1,
 +      },
++    ],
++  },
++  {
++    id: "first-badge",
++    title: "Unlocking Your First Badge",
++    items: [
 +      {
 +        id: "first-badge",
 +        icon: "🏅",
@@ -653,6 +659,12 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +        desc: "Oldj fel 1 badge-et.",
 +        unlock: () => Object.keys(state.profile?.unlockedBadges ?? {}).length >= 2,
 +      },
++    ],
++  },
++  {
++    id: "daily-weekly",
++    title: "Daily and Weekly Tasks",
++    items: [
 +      {
 +        id: "daily-quest",
 +        icon: "📅",
@@ -667,6 +679,12 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +        desc: "Teljesíts 1 heti küldetést.",
 +        unlock: (s) => (s.stats?.weeklyQuestsClaimed ?? 0) >= 1,
 +      },
++    ],
++  },
++  {
++    id: "goth-empire",
++    title: "Achieving the Gothic Empire",
++    items: [
 +      {
 +        id: "goth-empire",
 +        icon: "🖤",
@@ -1257,8 +1275,9 @@ index 1d9df64c4b27ca14dd7e7a128c591079a0814242..6fe55d58d0934b5d6d1fc0da942a13fd
 +
 +      const card = document.createElement("div");
 +      card.className = `advancement-card ${unlocked ? "unlocked" : "locked"}`.trim();
++      const iconClass = unlocked ? "filled" : "empty";
 +      card.innerHTML = `
-+        <div class="advancement-icon">${unlocked ? adv.icon : ""}</div>
++        <div class="advancement-icon ${iconClass}">${unlocked ? adv.icon : ""}</div>
 +        <div class="advancement-info">
 +          <h4>${adv.name}</h4>
 +          <p>${adv.desc}</p>
