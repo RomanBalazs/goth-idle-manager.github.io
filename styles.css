@@ -592,11 +592,19 @@ footer {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
   }
 
   .menu {
     grid-auto-flow: column;
     grid-auto-columns: minmax(120px, 1fr);
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+  }
+
+  .menu-button {
+    white-space: nowrap;
   }
 }
 
@@ -604,10 +612,13 @@ footer {
   .sidebar {
     flex-direction: column;
     align-items: stretch;
+    padding: 1.5rem 1.25rem;
   }
 
   .top-bar {
     padding: 1.5rem;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .layout {
@@ -616,6 +627,20 @@ footer {
 
   footer {
     padding: 0 1.5rem 2rem;
+  }
+
+  .currency-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
+  .buy-panel {
+    width: 100%;
+  }
+
+  .buy-buttons {
+    justify-content: space-between;
   }
 
   .workplace-card {
@@ -630,6 +655,73 @@ footer {
   .time-warp {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .crate-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 540px) {
+  .profile-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .menu {
+    grid-auto-columns: minmax(110px, 1fr);
+    gap: 0.5rem;
+  }
+
+  .menu-button {
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.85rem;
+  }
+
+  .currency-strip .value {
+    font-size: 1.25rem;
+  }
+
+  .panel {
+    padding: 1.1rem;
+  }
+
+  .workplace-actions,
+  .card button,
+  .workplace-actions button {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .badge-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .quests-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fx-toast-host {
+    right: 10px;
+    top: 72px;
+    width: min(320px, calc(100vw - 20px));
+  }
+
+  .fx-unlock-host {
+    top: 12px;
+    left: 12px;
   }
 }
 /* ===== Profile (nickname + badges) ===== */
@@ -980,6 +1072,106 @@ footer {
   color: var(--text);
 }
 
+/* ===== Advancements ===== */
+.advancement-list{
+  display: grid;
+  gap: 1.5rem;
+}
+
+.advancement-category{
+  display: grid;
+  gap: 0.85rem;
+}
+
+.advancement-category h3{
+  margin: 0;
+  color: var(--accent);
+}
+
+.advancement-grid{
+  display: grid;
+  gap: 0.85rem;
+}
+
+.advancement-card{
+  background: #1b1822;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1rem;
+  padding: 0.9rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.advancement-card.unlocked{
+  border-color: rgba(139,225,198,.4);
+  box-shadow: 0 0 20px rgba(139,225,198,.12);
+}
+
+.advancement-icon{
+  width: 56px;
+  height: 56px;
+  border-radius: 0.75rem;
+  background: #221f2b;
+  border: 1px solid rgba(255,255,255,.12);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.advancement-card.locked .advancement-icon{
+  color: transparent;
+}
+
+.advancement-card.locked .advancement-icon::after{
+  content: "";
+  width: 22px;
+  height: 22px;
+  border-radius: 0.3rem;
+  border: 1px dashed rgba(255,255,255,.35);
+  display: block;
+}
+
+.advancement-info h4{
+  margin: 0;
+  font-weight: 800;
+}
+
+.advancement-info p{
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.advancement-meta{
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.advancement-progress{
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.advancement-progress span{
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  width: 0%;
+}
+
+.advancement-status{
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 
 
 /* ===== FX / UI Feedback ===== */
@@ -1040,6 +1232,64 @@ footer {
   display: grid;
   gap: 0.55rem;
   width: min(340px, calc(100vw - 28px));
+}
+
+.fx-unlock-host {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.fx-unlock {
+  background: rgba(15, 13, 20, 0.92);
+  border: 1px solid rgba(240,117,180,0.45);
+  color: #f7f5ff;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.75rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: center;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.45);
+  transform: translateY(-12px);
+  opacity: 0;
+  animation: fxUnlockIn 200ms ease forwards;
+}
+
+.fx-unlock-icon{
+  width: 38px;
+  height: 38px;
+  border-radius: 0.6rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+}
+
+.fx-unlock-title{
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  margin-bottom: 0.15rem;
+}
+
+.fx-unlock-sub{
+  font-size: 0.82rem;
+  color: rgba(247,245,255,0.75);
+}
+
+.fx-unlock.out{
+  animation: fxUnlockOut 200ms ease forwards;
+}
+
+@keyframes fxUnlockIn {
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fxUnlockOut {
+  to { transform: translateY(-12px); opacity: 0; }
 }
 
 .fx-toast {
