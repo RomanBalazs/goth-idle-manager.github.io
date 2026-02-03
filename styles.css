@@ -967,6 +967,7 @@ footer {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .quest-list{
@@ -1012,6 +1013,9 @@ footer {
   font-weight: 800;
   font-size: 0.85rem;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quest-desc{
