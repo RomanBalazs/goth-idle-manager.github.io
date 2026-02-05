@@ -1896,8 +1896,17 @@ body.crate-reveal-open{
   border-radius:14px;
   display:grid;
   place-items:center;
-  font-size:30px;
   background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+.shopkeeper-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
 }
 
 .shopkeeper-name{
@@ -1906,8 +1915,9 @@ body.crate-reveal-open{
 
 .premium-shop-grid{
   display:grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap:14px;
+  align-items:start;
 }
 
 @media (max-width: 900px){
@@ -1917,8 +1927,9 @@ body.crate-reveal-open{
 .premium-section-head{
   display:flex;
   justify-content:space-between;
-  align-items:flex-end;
+  align-items:baseline;
   gap:12px;
+  flex-wrap:wrap;
   margin-bottom:10px;
 }
 
@@ -1930,7 +1941,7 @@ body.crate-reveal-open{
 
 .premium-item{
   display:grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   gap:12px;
   align-items:center;
   padding:10px;
@@ -1957,6 +1968,16 @@ body.crate-reveal-open{
   background: rgba(255,255,255,0.06);
 }
 
+.premium-meta{
+  min-width:0;
+}
+
+.premium-meta h4,
+.premium-meta p{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
 .premium-meta h4{
   margin:0;
   font-size: 15px;
@@ -1971,7 +1992,7 @@ body.crate-reveal-open{
   gap:10px;
   align-items:center;
   justify-content:flex-end;
-  white-space:nowrap;
+  flex-wrap:wrap;
 }
 
 .premium-tag{
@@ -1998,90 +2019,12 @@ body.crate-reveal-open{
   border: 1px dashed rgba(255,255,255,0.18);
 }
 
-/* === Managers: kártya arány + nagyobb profilkép (≈ +80%) === */
-#manager-list {
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-}
-
-@media (max-width: 560px) {
-  #manager-list {
-    grid-template-columns: 1fr;
+@media (max-width: 560px){
+  .premium-item{
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .premium-actions{
+    grid-column: 1 / -1;
+    justify-content:flex-start;
   }
 }
-
-#manager-list .manager-card {
-  min-height: 220px;
-}
-
-.manager-head {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.manager-info {
-  min-width: 0;
-  flex: 1;
-  display: grid;
-  gap: 0.35rem;
-}
-
-.manager-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.manager-title-row h3 {
-  margin: 0;
-}
-
-.manager-role {
-  font-weight: 700;
-  color: var(--text);
-  opacity: 0.9;
-}
-
-.manager-desc {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.manager-meta {
-  justify-content: flex-start;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.manager-portrait {
-  width: 112px; /* 64px -> 112px (~+75%), vizuálisan kb. +80% */
-  aspect-ratio: 1 / 1;
-  border-radius: 1rem;
-  overflow: hidden;
-  background: #262230;
-  flex: 0 0 auto;
-}
-
-.manager-portrait img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* Ritkaság keret a kép körül */
-.rarity-frame {
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.18);
-}
-
-.rarity-frame.uncommon { border-color: #b5f59b; }
-.rarity-frame.common { border-color: #1f7a3b; }
-.rarity-frame.rare { border-color: #53d7ff; }
-.rarity-frame.ultra-rare { border-color: #1b6cff; }
-.rarity-frame.epic { border-color: #9b59ff; }
-.rarity-frame.legendary { border-color: #ffd700; }
-.rarity-frame.exotic { border-color: #ff7a18; }

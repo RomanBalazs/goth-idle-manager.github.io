@@ -1031,7 +1031,7 @@ const WORLD_CONFIGS = [
         id: "lunar-lab",
         name: "Lunar Lab",
         description: "Kísérleti labor neon holdfénnyel.",
-        icon: "<img src=\"assets/gfc.png\" alt=\"GFC ikon\" />",
+        icon: "🌙",
         baseCost: 180,
         costGrowth: 1.13,
         baseProfit: 10,
@@ -2906,88 +2906,199 @@ function renderWorkplaces() {
   });
 }
 
+// ===== Manager portrait helpers (prevent flicker + name-based icons) =====
+let _mgrRenderWorldId = null;
+
+function safeFileSlug(input) {
+  return String(input ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getManagerPortraitCandidates(manager) {
+  const slug = safeFileSlug(manager?.name);
+  const unique = [];
+  const push = (p) => {
+    if (!p) return;
+    if (unique.includes(p)) return;
+    unique.push(p);
+  };
+  // Prefer character-name based icons (e.g. luna-manager.png)
+  push(`assets/managers/${slug}-manager.png`);
+  push(`assets/managers/${slug}-manager.jpg`);
+  // Fallback to id-based icons (e.g. earth-starcoffee-manager.png)
+  push(`assets/managers/${manager?.id}.png`);
+  push(`assets/managers/${manager?.id}.jpg`);
+  // Final fallbacks
+  push("assets/managers/placeholder.png");
+  push("./favicon.png");
+  return unique;
+}
+
+function initImgFallback(img, candidates) {
+  if (!img) return;
+  img._candidates = Array.isArray(candidates) ? candidates : [];
+  img._candidateIndex = 0;
+  img.loading = img.loading || "lazy";
+  img.decoding = img.decoding || "async";
+  if (!img.getAttribute("src")) {
+    img.setAttribute("src", img._candidates[0] || "./favicon.png");
+  }
+  img.onerror = () => {
+    const list = img._candidates || [];
+    const next = (img._candidateIndex ?? 0) + 1;
+    img._candidateIndex = next;
+    if (next < list.length) {
+      img.setAttribute("src", list[next]);
+      return;
+    }
+    img.onerror = null;
+  };
+}
+
 function renderManagers() {
+  if (!managerList) return;
+  if (!isTabActive("managers")) return;
+
   const worldId = state.currentWorldId;
   const worldState = getCurrentWorldState();
-  managerList.innerHTML = "";
+
+  // Only rebuild the DOM when the world changes; otherwise update in-place to avoid image flicker.
+  if (_mgrRenderWorldId !== worldId) {
+    managerList.innerHTML = "";
+    _mgrRenderWorldId = worldId;
+  }
+
   MANAGER_CONFIGS.filter((manager) => manager.worldId === worldId).forEach((manager) => {
+    let card = managerList.querySelector(`[data-manager-id="${manager.id}"]`);
+    const isNew = !card;
+
+    if (!card) {
+      card = document.createElement("div");
+      card.className = "card manager-card";
+      card.dataset.managerId = manager.id;
+
+      card.innerHTML = `
+        <div class="manager-head">
+          <div class="manager-portrait rarity-frame">
+            <img class="manager-img" alt="${manager.name}" />
+          </div>
+          <div class="manager-info">
+            <div class="manager-title-row">
+              <h3 class="manager-name"></h3>
+              <div class="rarity-row">
+                <span class="rarity-dot"></span>
+                <span class="rarity-label"></span>
+              </div>
+            </div>
+            <p class="manager-role"></p>
+            <p class="manager-desc"></p>
+            <div class="meta manager-meta">
+              <span class="m-level"></span>
+              <span class="m-speed"></span>
+              <span class="m-owned"></span>
+            </div>
+          </div>
+        </div>
+        <div class="manager-actions">
+          <button class="manager-level"></button>
+          <button class="manager-rarity"></button>
+        </div>
+      `;
+
+      // Static text
+      card.querySelector(".manager-name").textContent = manager.name;
+      card.querySelector(".manager-role").textContent = manager.role;
+      card.querySelector(".manager-desc").textContent = manager.description;
+
+      // Init portrait with fallbacks
+      const img = card.querySelector(".manager-img");
+      const candidates = getManagerPortraitCandidates(manager);
+      initImgFallback(img, candidates);
+
+      // Click handlers (recompute costs on click)
+      card.querySelector(".manager-level").addEventListener("click", () => {
+        const ws = getCurrentWorldState();
+        const ms = getManagerState(ws, manager.id);
+        const rarityNow = getManagerRarity(ms);
+        const canLevel = ms.level < rarityNow.maxLevel;
+        const cost = getLevelCost(manager.cost, ms.level);
+        if (!canLevel || ws.cash < cost) return;
+
+        ws.cash -= cost;
+        ms.owned = true;
+        ms.level += 1;
+
+        fxEnqueue({ type: "buy_manager", worldId, managerId: manager.id, level: ms.level });
+        if (state.stats) state.stats.totalManagersBought = (state.stats.totalManagersBought ?? 0) + 1;
+        questOnEvent("manager", 1);
+        refreshDerivedQuestProgress();
+
+        const jobState = getJobState(ws, manager.targetJobId);
+        if (jobState.quantity > 0 && !jobState.cycleEnd) {
+          startJobCycle(worldId, manager.targetJobId);
+        }
+
+        saveState();
+        render();
+      });
+
+      card.querySelector(".manager-rarity").addEventListener("click", () => {
+        const ws = getCurrentWorldState();
+        const ms = getManagerState(ws, manager.id);
+        const rarityNow = getManagerRarity(ms);
+        const canUpgradeRarity = ms.level === rarityNow.maxLevel && ms.rarityIndex < MANAGER_RARITIES.length - 1;
+        if (!canUpgradeRarity) return;
+
+        const liquidKey = getLiquidKey(rarityNow.id);
+        const available = state.gothGirlLiquids[liquidKey] ?? 0;
+        if (available < rarityNow.liquidCost) return;
+
+        state.gothGirlLiquids[liquidKey] -= rarityNow.liquidCost;
+        ms.rarityIndex += 1;
+
+        fxEnqueue({ type: "upgrade_manager_rarity", worldId, managerId: manager.id });
+        saveState();
+        render();
+      });
+
+      managerList.appendChild(card);
+    }
+
+    // Dynamic update (every tick)
     const managerState = getManagerState(worldState, manager.id);
     const owned = managerState.owned;
-    const nextLevel = managerState.level + 1;
     const levelCost = getLevelCost(manager.cost, managerState.level);
     const rarity = getManagerRarity(managerState);
     const canLevel = managerState.level < rarity.maxLevel;
+
     const liquidKey = getLiquidKey(rarity.id);
     const liquidCount = state.gothGirlLiquids[liquidKey] ?? 0;
     const canUpgradeRarity = managerState.level === rarity.maxLevel && managerState.rarityIndex < MANAGER_RARITIES.length - 1;
-    const card = document.createElement("div");
-    card.className = "card manager-card";
-    card.dataset.managerId = manager.id;
-    const portraitSrc = `assets/managers/${String(manager.name || '').toLowerCase()}-manager.png`;
-    const portraitAlt = `${String(manager.name || '').toLowerCase()} ikon`;
-    card.innerHTML = `
-      <div class="manager-head">
-        <div class="manager-portrait rarity-frame ${rarity.color}">
-          <img src="${portraitSrc}" alt="${portraitAlt}" loading="lazy" onerror="this.onerror=null;this.src='./favicon.png';" />
-        </div>
-        <div class="manager-info">
-          <div class="manager-title-row">
-            <h3>${manager.name}</h3>
-            <div class="rarity-row">
-              <span class="rarity-dot ${rarity.color}"></span>
-              <span class="rarity-label ${rarity.color}">${rarity.label}</span>
-            </div>
-          </div>
-          <p class="manager-role">${manager.role}</p>
-          <p class="manager-desc">${manager.description}</p>
-          <div class="meta manager-meta">
-            <span>Szint: ${managerState.level}</span>
-            <span>Sebesség: ${formatSpeedMultiplier(getManagerEffectiveSpeedMultiplier(managerState))}</span>
-            <span>${owned ? "Aktív" : "Elérhető"}</span>
-          </div>
-        </div>
-      </div>
-      <div class="manager-actions">
-        <button class="manager-level" ${!canLevel || worldState.cash < levelCost ? "disabled" : ""}>
-          ${owned ? `Szint +1 (${formatNumber(levelCost)})` : `Felveszem (${formatNumber(levelCost)})`}
-        </button>
-        <button class="manager-rarity" ${
-          !canUpgradeRarity || liquidCount < rarity.liquidCost ? "disabled" : ""
-        }>
-          Ritkaság +1 (${rarity.liquidCost} ${rarity.label} nedv)
-        </button>
-      </div>
-    `;
 
-    card.querySelector(".manager-level").addEventListener("click", () => {
-      if (!canLevel || worldState.cash < levelCost) return;
-      worldState.cash -= levelCost;
-      managerState.owned = true;
-      managerState.level = nextLevel;
-      fxEnqueue({ type: "buy_manager", worldId, managerId: manager.id, level: nextLevel });
-      if (state.stats) state.stats.totalManagersBought = (state.stats.totalManagersBought ?? 0) + 1;
-      questOnEvent("manager", 1);
-      refreshDerivedQuestProgress();
-      const jobState = getJobState(worldState, manager.targetJobId);
-      if (jobState.quantity > 0 && !jobState.cycleEnd) {
-        startJobCycle(worldId, manager.targetJobId);
-      }
-      saveState();
-      render();
-    });
+    // Rarity styling
+    const portrait = card.querySelector(".manager-portrait");
+    portrait.className = `manager-portrait rarity-frame ${rarity.color}`;
+    card.querySelector(".rarity-dot").className = `rarity-dot ${rarity.color}`;
+    const rarityLabelEl = card.querySelector(".rarity-label");
+    rarityLabelEl.className = `rarity-label ${rarity.color}`;
+    rarityLabelEl.textContent = rarity.label;
 
-    card.querySelector(".manager-rarity").addEventListener("click", () => {
-      if (!canUpgradeRarity) return;
-      const available = state.gothGirlLiquids[liquidKey] ?? 0;
-      if (available < rarity.liquidCost) return;
-      state.gothGirlLiquids[liquidKey] -= rarity.liquidCost;
-      managerState.rarityIndex += 1;
-      fxEnqueue({ type: "upgrade_manager_rarity", worldId, managerId: manager.id });
-      saveState();
-      render();
-    });
+    // Meta
+    card.querySelector(".m-level").textContent = `Szint: ${managerState.level}`;
+    card.querySelector(".m-speed").textContent = `Sebesség: ${formatSpeedMultiplier(getManagerEffectiveSpeedMultiplier(managerState))}`;
+    card.querySelector(".m-owned").textContent = owned ? "Aktív" : "Elérhető";
 
-    managerList.appendChild(card);
+    // Buttons
+    const levelBtn = card.querySelector(".manager-level");
+    levelBtn.disabled = !canLevel || worldState.cash < levelCost;
+    levelBtn.textContent = owned ? `Szint +1 (${formatNumber(levelCost)})` : `Felveszem (${formatNumber(levelCost)})`;
+
+    const rarityBtn = card.querySelector(".manager-rarity");
+    rarityBtn.disabled = !canUpgradeRarity || liquidCount < rarity.liquidCost;
+    rarityBtn.textContent = `Ritkaság +1 (${rarity.liquidCost} ${rarity.label} nedv)`;
   });
 }
 
