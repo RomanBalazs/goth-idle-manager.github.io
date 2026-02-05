@@ -646,7 +646,7 @@ function fxFlush() {
     }
 
     if (evt.type === 'event_payout') {
-      if (!isTabActive('event')) return;
+      if (!isTabActive('events')) return;
       const key = `event:${evt.jobId}`;
       const last = FX.payoutPopLast.get(key) || 0;
       if (now - last < FX_CONFIG.payoutPopThrottleMs) return;

@@ -689,6 +689,8 @@ footer {
     grid-template-columns: 1fr;
   }
 
+}
+
 @media (max-width: 560px) {
   .sidebar {
     padding: 1.25rem;
