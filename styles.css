@@ -1363,8 +1363,7 @@ footer {
 .fx-adv-host {
   position: fixed;
   top: 86px;
-  right: 14px;
-  left: auto;
+  left: 14px;
   display: grid;
   gap: 0.55rem;
   width: min(340px, calc(100vw - 28px));
@@ -1548,3 +1547,289 @@ footer {
 .workplace-progress span {
   transition: width 160ms linear;
 }
+
+
+/* ===== Crate icons + flashy crate reveal ===== */
+.fx-adv-host{
+  right: 14px;
+  left: auto;
+}
+
+.crate-mini-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 26px;
+  height: 26px;
+  border-radius: 0.55rem;
+  margin-right: 0.55rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 1rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.crate-btn-ico{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: 0.5rem;
+  border-radius: 0.45rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.95rem;
+  line-height: 1;
+  vertical-align: -0.15rem;
+  user-select: none;
+}
+
+/* Prevent background scrolling when crate reveal is open */
+body.crate-reveal-open{
+  overflow: hidden;
+}
+
+.crate-reveal-layer{
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.crate-reveal-layer.show{
+  display: flex;
+}
+
+.crate-reveal-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.64);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  animation: crateBackdropIn 180ms ease forwards;
+}
+
+.crate-reveal-layer.hide .crate-reveal-backdrop{
+  animation: crateBackdropOut 180ms ease forwards;
+}
+
+@keyframes crateBackdropIn{
+  to { opacity: 1; }
+}
+
+@keyframes crateBackdropOut{
+  to { opacity: 0; }
+}
+
+.crate-reveal-modal{
+  position: relative;
+  width: min(560px, calc(100vw - 28px));
+  background: rgba(15,13,20,0.95);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 1.25rem;
+  padding: 1rem 1.05rem 1.15rem;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.48);
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  z-index: 1;
+}
+
+.crate-reveal-layer.show .crate-reveal-modal{
+  animation: crateModalIn 200ms ease forwards;
+}
+
+.crate-reveal-layer.hide .crate-reveal-modal{
+  animation: crateModalOut 180ms ease forwards;
+}
+
+@keyframes crateModalIn{
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes crateModalOut{
+  to { transform: translateY(14px) scale(0.98); opacity: 0; }
+}
+
+.crate-reveal-x{
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.9rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.crate-reveal-x:hover{
+  transform: translateY(-1px);
+}
+
+.crate-reveal-head{
+  padding-right: 2.6rem;
+}
+
+.crate-reveal-title{
+  display:flex;
+  align-items:center;
+  gap: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  font-size: 1.1rem;
+}
+
+.crate-reveal-title-ico{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 34px;
+  height: 34px;
+  border-radius: 0.8rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 1.15rem;
+  user-select: none;
+}
+
+.crate-reveal-sub{
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.crate-reveal-crate{
+  position: relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0.9rem 0 0.7rem;
+}
+
+.crate-reveal-cratebox{
+  width: 98px;
+  height: 98px;
+  border-radius: 1.05rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 2.35rem;
+  user-select: none;
+}
+
+.crate-reveal-modal.opening .crate-reveal-cratebox{
+  animation: crateShake 620ms ease;
+}
+
+@keyframes crateShake{
+  0% { transform: rotate(0) scale(1); }
+  15% { transform: rotate(-4deg) scale(1.03); }
+  30% { transform: rotate(5deg) scale(1.05); }
+  45% { transform: rotate(-6deg) scale(1.06); }
+  60% { transform: rotate(4deg) scale(1.04); }
+  75% { transform: rotate(-3deg) scale(1.02); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+.crate-reveal-glow{
+  position:absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(240,117,180,0.18), rgba(95,217,255,0.08), transparent 65%);
+  filter: blur(0.2px);
+  opacity: 0.9;
+  pointer-events:none;
+}
+
+.crate-reveal-grid{
+  display:grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+  padding: 0.4rem 0.1rem 0.2rem;
+}
+
+@media (max-width: 560px){
+  .crate-reveal-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.crate-loot-card{
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  border-radius: 1rem;
+  padding: 0.55rem 0.6rem;
+  min-height: 78px;
+  display:flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.45rem;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+}
+
+.crate-loot-card.in{
+  animation: crateLootIn 280ms ease forwards;
+}
+
+@keyframes crateLootIn{
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.crate-loot-top{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.crate-loot-drop{
+  font-size: 1.05rem;
+  opacity: 0.9;
+}
+
+.crate-loot-rarity{
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.crate-loot-qty{
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+/* rarity highlights */
+.crate-loot-card.uncommon{ --loot: #b5f59b; border-color: rgba(181,245,155,0.55); box-shadow: 0 0 18px rgba(181,245,155,0.10); }
+.crate-loot-card.common{ --loot: #1f7a3b; border-color: rgba(31,122,59,0.55); box-shadow: 0 0 18px rgba(31,122,59,0.10); }
+.crate-loot-card.rare{ --loot: #53d7ff; border-color: rgba(83,215,255,0.55); box-shadow: 0 0 18px rgba(83,215,255,0.10); }
+.crate-loot-card.ultra-rare{ --loot: #1b6cff; border-color: rgba(27,108,255,0.55); box-shadow: 0 0 18px rgba(27,108,255,0.10); }
+.crate-loot-card.epic{ --loot: #9b59ff; border-color: rgba(155,89,255,0.55); box-shadow: 0 0 18px rgba(155,89,255,0.10); }
+.crate-loot-card.legendary{ --loot: #ffd700; border-color: rgba(255,215,0,0.55); box-shadow: 0 0 18px rgba(255,215,0,0.12); }
+.crate-loot-card.exotic{ --loot: #ff7a18; border-color: rgba(255,122,24,0.55); box-shadow: 0 0 18px rgba(255,122,24,0.12); }
+
+.crate-loot-card.uncommon .crate-loot-rarity{ color: #b5f59b; }
+.crate-loot-card.common .crate-loot-rarity{ color: #1f7a3b; }
+.crate-loot-card.rare .crate-loot-rarity{ color: #53d7ff; }
+.crate-loot-card.ultra-rare .crate-loot-rarity{ color: #1b6cff; }
+.crate-loot-card.epic .crate-loot-rarity{ color: #9b59ff; }
+.crate-loot-card.legendary .crate-loot-rarity{ color: #ffd700; }
+.crate-loot-card.exotic .crate-loot-rarity{ color: #ff7a18; }
+
+.crate-reveal-actions{
+  display:flex;
+  justify-content:flex-end;
+  padding-top: 0.75rem;
+}
+

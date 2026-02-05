@@ -1202,6 +1202,7 @@ const defaultState = {
   },
   crates: {
     lastFree: 0,
+    cashPurchases: 0,
   },
   event: {
     startTimestamp: null,
@@ -1523,7 +1524,7 @@ function fxFlush() {
 
     if (evt.type === 'crate_open') {
       fxBanner('Láda nyitva!', 'info');
-      fxToast('Láda nyitva', evt.summary || '', 'info');
+      fxCrateReveal(evt.crateType, evt.results || [], evt.summary || '');
       return;
     }
 
@@ -1591,6 +1592,12 @@ function initState(nextState) {
       nextState.worlds[world.id] = createWorldState(world.id);
     }
   });
+
+  // ---- Crates defaults (backward compatible) ----
+  if (!nextState.crates) nextState.crates = structuredClone(defaultState.crates);
+  if (typeof nextState.crates.lastFree !== "number") nextState.crates.lastFree = 0;
+  if (typeof nextState.crates.cashPurchases !== "number") nextState.crates.cashPurchases = 0;
+
     // ---- Profile & stats defaults (backward compatible) ----
   if (!nextState.profile) nextState.profile = structuredClone(defaultState.profile);
   if (!nextState.profile.unlockedBadges) nextState.profile.unlockedBadges = { starter: true };
@@ -2758,6 +2765,165 @@ function processEventCycles() {
   });
 }
 
+// ===== Crates / Loot UI =====
+const CRATE_UI = {
+  free: { icon: "🎁", title: "Ingyen láda" },
+  cash: { icon: "💰", title: "Cash láda" },
+  ggl: { icon: "🧪", title: "GGL láda" },
+};
+
+function getCrateIcon(crateType) {
+  return CRATE_UI[crateType]?.icon || "🎁";
+}
+
+function getCashCrateBasePrice() {
+  return 5000;
+}
+
+// Cash crate price grows +20% each purchase (compound).
+function getCashCratePrice() {
+  const n = state?.crates?.cashPurchases ?? 0;
+  return Math.max(1, Math.round(getCashCrateBasePrice() * Math.pow(1.2, n)));
+}
+
+function decorateCratePanel(buttonEl, crateType) {
+  if (!buttonEl) return;
+  const panel = buttonEl.closest(".crate-panel");
+  if (!panel) return;
+  if (panel.dataset.iconified === "1") return;
+  const h3 = panel.querySelector("h3");
+  if (h3 && !h3.querySelector(".crate-mini-icon")) {
+    const label = h3.textContent.trim();
+    h3.innerHTML = `<span class="crate-mini-icon" aria-hidden="true">${getCrateIcon(crateType)}</span>${label}`;
+  }
+  panel.dataset.iconified = "1";
+}
+
+// Crate reveal modal (flashy opening)
+const CRATE_REVEAL = { open: false };
+
+function fxEnsureCrateRevealLayer() {
+  let layer = document.getElementById("crate-reveal-layer");
+  if (layer) return layer;
+
+  layer = document.createElement("div");
+  layer.id = "crate-reveal-layer";
+  layer.className = "crate-reveal-layer";
+  layer.innerHTML = `
+    <div class="crate-reveal-backdrop"></div>
+    <div class="crate-reveal-modal" role="dialog" aria-modal="true">
+      <button class="crate-reveal-x" aria-label="Bezárás">✕</button>
+
+      <div class="crate-reveal-head">
+        <div class="crate-reveal-title">
+          <span class="crate-reveal-title-ico" aria-hidden="true">🎁</span>
+          <span class="crate-reveal-title-text">Láda nyitás</span>
+        </div>
+        <div id="crate-reveal-sub" class="crate-reveal-sub"></div>
+      </div>
+
+      <div class="crate-reveal-crate">
+        <div id="crate-reveal-cratebox" class="crate-reveal-cratebox" aria-hidden="true">🎁</div>
+        <div class="crate-reveal-glow" aria-hidden="true"></div>
+      </div>
+
+      <div id="crate-reveal-grid" class="crate-reveal-grid"></div>
+
+      <div class="crate-reveal-actions">
+        <button id="crate-reveal-ok" class="cta">OK</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(layer);
+
+  const close = () => fxHideCrateReveal();
+  layer.querySelector(".crate-reveal-backdrop")?.addEventListener("click", close);
+  layer.querySelector(".crate-reveal-x")?.addEventListener("click", close);
+  layer.querySelector("#crate-reveal-ok")?.addEventListener("click", close);
+
+  // Escape to close (single listener)
+  if (!window.__crateRevealEscBound) {
+    window.__crateRevealEscBound = true;
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && CRATE_REVEAL.open) fxHideCrateReveal();
+    });
+  }
+  return layer;
+}
+
+function fxHideCrateReveal() {
+  const layer = document.getElementById("crate-reveal-layer");
+  if (!layer) return;
+  CRATE_REVEAL.open = false;
+  document.body.classList.remove("crate-reveal-open");
+
+  // Keep it visible during the out animation, then fully hide.
+  if (!layer.classList.contains("show")) return;
+  layer.classList.add("hide");
+  window.setTimeout(() => {
+    layer.classList.remove("show");
+    layer.classList.remove("hide");
+  }, 200);
+}
+
+function getRarityMeta(rarityId) {
+  const meta = MANAGER_RARITIES.find((r) => r.id === rarityId);
+  return meta || { id: rarityId, label: rarityId, color: "common" };
+}
+
+function fxCrateReveal(crateType, results = [], summary = "") {
+  const layer = fxEnsureCrateRevealLayer();
+  const modal = layer.querySelector(".crate-reveal-modal");
+  const titleIco = layer.querySelector(".crate-reveal-title-ico");
+  const titleText = layer.querySelector(".crate-reveal-title-text");
+  const sub = layer.querySelector("#crate-reveal-sub");
+  const crateBox = layer.querySelector("#crate-reveal-cratebox");
+  const grid = layer.querySelector("#crate-reveal-grid");
+
+  if (titleIco) titleIco.textContent = getCrateIcon(crateType);
+  if (titleText) titleText.textContent = CRATE_UI[crateType]?.title || "Láda";
+  if (sub) sub.textContent = summary ? summary : "5 jutalom feloldva";
+
+  if (crateBox) crateBox.textContent = getCrateIcon(crateType);
+
+  // Build loot cards
+  const cards = results.slice(0, 5).map((rarityId) => {
+    const meta = getRarityMeta(rarityId);
+    const cls = meta.color || meta.id;
+    return `
+      <div class="crate-loot-card ${cls}" data-rarity="${meta.id}">
+        <div class="crate-loot-top">
+          <span class="crate-loot-drop" aria-hidden="true">💧</span>
+          <span class="crate-loot-rarity">${meta.label}</span>
+        </div>
+        <div class="crate-loot-qty">+1</div>
+      </div>
+    `;
+  }).join("");
+
+  if (grid) grid.innerHTML = cards;
+
+  // Show + animate
+  CRATE_REVEAL.open = true;
+  document.body.classList.add("crate-reveal-open");
+  layer.classList.remove("hide");
+  layer.classList.add("show");
+
+  if (modal) {
+    modal.classList.remove("opening");
+    void modal.offsetWidth;
+    modal.classList.add("opening");
+  }
+
+  // Stagger loot cards
+  const els = Array.from(layer.querySelectorAll(".crate-loot-card"));
+  els.forEach((el) => el.classList.remove("in"));
+  els.forEach((el, idx) => {
+    window.setTimeout(() => el.classList.add("in"), 260 + idx * 110);
+  });
+}
+
+
 function renderCrates() {
   const now = Date.now();
   const elapsed = now - state.crates.lastFree;
@@ -2765,9 +2931,23 @@ function renderCrates() {
   crateTimerEl.textContent = remaining
     ? `Következő láda: ${formatDuration(remaining)}`
     : "Az ingyen láda elérhető!";
-  openCrateButton.disabled = remaining > 0;
-  gglCrateButton.disabled = state.ggl < 2;
-  cashCrateButton.disabled = getCurrentWorldState().cash < 5000;
+  if (openCrateButton) openCrateButton.disabled = remaining > 0;
+  const cashPrice = getCashCratePrice();
+  if (gglCrateButton) gglCrateButton.disabled = state.ggl < 2;
+  if (cashCrateButton) cashCrateButton.disabled = getCurrentWorldState().cash < cashPrice;
+
+  // UI: add small icons + dynamic price labels
+  decorateCratePanel(openCrateButton, "free");
+  decorateCratePanel(gglCrateButton, "ggl");
+  decorateCratePanel(cashCrateButton, "cash");
+
+  if (openCrateButton) openCrateButton.innerHTML = `<span class="crate-btn-ico" aria-hidden="true">${getCrateIcon("free")}</span>Láda nyitása`;
+  if (gglCrateButton) gglCrateButton.innerHTML = `<span class="crate-btn-ico" aria-hidden="true">${getCrateIcon("ggl")}</span>GGL vásárlás (2)`;
+  if (cashCrateButton) cashCrateButton.innerHTML = `<span class="crate-btn-ico" aria-hidden="true">${getCrateIcon("cash")}</span>Vásárlás (${formatNumber(cashPrice)})`;
+
+  const cashPanel = cashCrateButton?.closest(".crate-panel");
+  const cashP = cashPanel?.querySelector("p");
+  if (cashP) cashP.textContent = `5 nedv, alap esélyek (${formatNumber(cashPrice)} kassza • +20% / vásárlás).`;
 
   girlListEl.innerHTML = `
     <div class="card girl-card">
@@ -2831,9 +3011,11 @@ function openCrate(crateType) {
   }
 
   if (crateType === "cash") {
-    if (getCurrentWorldState().cash < 5000) return;
+    const price = getCashCratePrice();
+    if (getCurrentWorldState().cash < price) return;
     didOpen = true;
-    getCurrentWorldState().cash -= 5000;
+    getCurrentWorldState().cash -= price;
+    state.crates.cashPurchases = (state.crates.cashPurchases ?? 0) + 1;
     const weights = { uncommon: 35, common: 30, rare: 20, "ultra-rare": 8, epic: 5, legendary: 2 };
     while (results.length < 5) {
       results.push(rollLiquid(weights));
@@ -2888,7 +3070,7 @@ function openCrate(crateType) {
     .map((k) => `${k} x${counts[k]}`)
     .slice(0, 3);
   const summary = parts.join(' • ');
-  fxEnqueue({ type: 'crate_open', crateType, summary });
+  fxEnqueue({ type: 'crate_open', crateType, summary, results });
   saveState();
   render();
 }
