@@ -702,7 +702,18 @@ function canAutoRunFor(s, worldId, jobId) {
   if (!worldState) return false;
   const manager = getManagerConfig(worldId, jobId);
   const hasManager = manager && getManagerState(worldState, manager.id).owned;
-  const hasPremiumAuto = Boolean(s.premiumUpgrades?.["premium-auto"]);
+
+  ensurePremiumState(s);
+  const eff = getPremiumEffects(s, worldId);
+  let hasPremiumAuto = false;
+  if (eff.autoLimit && eff.autoLimit >= 999) {
+    hasPremiumAuto = true;
+  } else if (eff.autoLimit && eff.autoLimit > 0) {
+    const world = WORLD_CONFIGS.find((w) => w.id === worldId);
+    const idx = world ? world.jobs.findIndex((j) => j.id === jobId) : -1;
+    hasPremiumAuto = idx >= 0 && idx < eff.autoLimit;
+  }
+
   return Boolean(hasManager || hasPremiumAuto);
 }
 
@@ -1020,7 +1031,7 @@ const WORLD_CONFIGS = [
         id: "lunar-lab",
         name: "Lunar Lab",
         description: "Kísérleti labor neon holdfénnyel.",
-        icon: "🌙",
+        icon: "<img src=\"assets/gfc.png\" alt=\"GFC ikon\" />",
         baseCost: 180,
         costGrowth: 1.13,
         baseProfit: 10,
@@ -1190,6 +1201,421 @@ const UPGRADE_CONFIGS = {
   ],
 };
 
+// ===== Premium Shop (Prémium bolt) - 120 upgrades, weekly 6 offers, max 3 active =====
+const PREMIUM_SHOP_CONFIG = {
+  total: 120,
+  weeklyOffers: 6,
+  activeLimit: 3,
+};
+
+function pad3(n) { return String(n).padStart(3, "0"); }
+
+function buildPremiumPool() {
+  // 12 archetypes x 10 ranks = 120
+  const archetypes = [
+    { key: "profit_a",  icon: "💎", name: "Fekete Kassza Áldás", baseCost: 3, costStep: 1, effect: (r) => ({ profitMult: 1 + (0.03 + 0.01 * (r - 1)) }) },
+    { key: "profit_b",  icon: "🖤", name: "Sötét Marketing",     baseCost: 4, costStep: 1, effect: (r) => ({ profitMult: 1 + (0.02 + 0.008 * (r - 1)) }) },
+    { key: "speed_a",   icon: "⚡", name: "Gyors Műszak",         baseCost: 3, costStep: 1, effect: (r) => ({ speedMult:  1 + (0.02 + 0.008 * (r - 1)) }) },
+    { key: "speed_b",   icon: "✨", name: "Neon Rush",            baseCost: 4, costStep: 1, effect: (r) => ({ speedMult:  1 + (0.015 + 0.007 * (r - 1)) }) },
+    { key: "mgr_cost",  icon: "🧾", name: "HR Alkudozás",         baseCost: 2, costStep: 1, effect: (r) => ({ managerCostMult: Math.max(0.75, 1 - 0.02 * r) }) },
+    { key: "job_cost",  icon: "🏷️", name: "Akciós Bérlet",        baseCost: 2, costStep: 1, effect: (r) => ({ jobCostMult:     Math.max(0.80, 1 - 0.015 * r) }) },
+    { key: "luck",      icon: "🎲", name: "Szerencse Medál",      baseCost: 4, costStep: 1, effect: (r) => ({ crateLuck: 1 + 0.12 * r }) },
+    { key: "loot",      icon: "🎁", name: "Túlpakkolás",          baseCost: 5, costStep: 1, effect: (r) => ({ extraLootRolls: Math.floor((r - 1) / 3) }) },
+    { key: "timewarp",  icon: "🌀", name: "Időcsipke",            baseCost: 3, costStep: 1, effect: (r) => ({ timeWarpHoursBonus: Math.floor(r / 3) }) },
+    { key: "quest",     icon: "📜", name: "Küldi Suttogás",       baseCost: 3, costStep: 1, effect: (r) => ({ questRewardMult: 1 + 0.05 * r }) },
+    { key: "auto",      icon: "🤖", name: "Önálló Műszak",        baseCost: 6, costStep: 1, effect: (r) => ({ autoLimit: r }) }, // per world: first r jobs can auto without manager
+    { key: "dual",      icon: "💠", name: "Duál Impulzus",        baseCost: 7, costStep: 1, effect: (r) => ({ profitMult: 1 + 0.02 * r, speedMult: 1 + 0.015 * r }) },
+  ];
+
+  const pool = [];
+  let idCounter = 1;
+
+  // Include legacy premium upgrades as part of the 120 pool (keeps old saves meaningful)
+  const legacy = [
+    {
+      id: "premium-profit",
+      icon: "💎",
+      name: "GGL Overdrive",
+      desc: "Globális profit x1.5 (aktiválható a 3 slot egyikébe).",
+      cost: 2,
+      effect: { profitMult: 1.5 },
+      legacy: true,
+    },
+    {
+      id: "premium-speed",
+      icon: "✨",
+      name: "GGL Time Lace",
+      desc: "Globális speed x1.3 (aktiválható a 3 slot egyikébe).",
+      cost: 3,
+      effect: { speedMult: 1.3 },
+      legacy: true,
+    },
+    {
+      id: "premium-auto",
+      icon: "🤖",
+      name: "GGL Auto Chorus",
+      desc: "Minden munkahely automata (aktiválható a 3 slot egyikébe).",
+      cost: 4,
+      effect: { autoLimit: 999 },
+      legacy: true,
+    },
+  ];
+
+  legacy.forEach((u) => pool.push(u));
+
+  archetypes.forEach((a) => {
+    for (let r = 1; r <= 10; r++) {
+      const id = `ps-${pad3(idCounter++)}-${a.key}-r${r}`;
+      const cost = a.baseCost + a.costStep * r;
+      const effect = a.effect(r);
+      pool.push({
+        id,
+        icon: a.icon,
+        name: `${a.name} ${r}`,
+        desc: describePremiumEffect(effect),
+        cost,
+        effect,
+      });
+    }
+  });
+
+  // Ensure exactly 120 items (legacy 3 + archetypes 12*10 = 123 -> trim to 120 by dropping last 3 generated)
+  // We keep all 3 legacy items, and keep first 117 generated.
+  if (pool.length > PREMIUM_SHOP_CONFIG.total) {
+    const keep = PREMIUM_SHOP_CONFIG.total;
+    const legacyCount = legacy.length;
+    const keepGenerated = Math.max(0, keep - legacyCount);
+    const generated = pool.slice(legacyCount, legacyCount + keepGenerated);
+    return legacy.concat(generated);
+  }
+  return pool.slice(0, PREMIUM_SHOP_CONFIG.total);
+}
+
+function describePremiumEffect(effect) {
+  const parts = [];
+  if (effect.profitMult && effect.profitMult !== 1) parts.push(`Profit x${formatSpeedMultiplier(effect.profitMult)}`);
+  if (effect.speedMult && effect.speedMult !== 1) parts.push(`Speed x${formatSpeedMultiplier(effect.speedMult)}`);
+  if (effect.managerCostMult && effect.managerCostMult !== 1) parts.push(`Menedzser ár x${formatSpeedMultiplier(effect.managerCostMult)}`);
+  if (effect.jobCostMult && effect.jobCostMult !== 1) parts.push(`Munkahely ár x${formatSpeedMultiplier(effect.jobCostMult)}`);
+  if (effect.crateLuck) parts.push(`Láda szerencse +${Math.round((effect.crateLuck - 1) * 100)}%`);
+  if (effect.extraLootRolls) parts.push(`+${effect.extraLootRolls} extra loot`);
+  if (effect.timeWarpHoursBonus) parts.push(`Time Warp +${effect.timeWarpHoursBonus} óra`);
+  if (effect.questRewardMult && effect.questRewardMult !== 1) parts.push(`Küldi jutalom +${Math.round((effect.questRewardMult - 1) * 100)}%`);
+  if (effect.autoLimit) parts.push(effect.autoLimit >= 999 ? `Auto minden munka` : `Auto az első ${effect.autoLimit} munka`);
+  return parts.length ? parts.join(" • ") : "Prémium bónusz";
+}
+
+const PREMIUM_POOL = buildPremiumPool();
+
+function getPremiumById(id) {
+  return PREMIUM_POOL.find((p) => p.id === id);
+}
+
+function getOwnedPremiumIds(s = state) {
+  return Object.keys(s.premiumUpgrades || {}).filter((id) => s.premiumUpgrades[id]);
+}
+
+function getActivePremiumIds(s = state) {
+  // Only count premiums as active if they are also owned.
+  return Object.keys(s.premiumActive || {}).filter((id) => Boolean(s.premiumActive[id]) && Boolean(s.premiumUpgrades?.[id]));
+}
+
+function countActivePremium(s = state) {
+  return getActivePremiumIds(s).length;
+}
+
+function ensurePremiumState(s = state) {
+  if (!s.premiumUpgrades || typeof s.premiumUpgrades !== "object") s.premiumUpgrades = {};
+  // Back-compat: older builds might have stored premiumActive as an array.
+  if (Array.isArray(s.premiumActive)) {
+    const obj = {};
+    s.premiumActive.forEach((id) => { if (id) obj[id] = true; });
+    s.premiumActive = obj;
+  }
+  if (!s.premiumActive || typeof s.premiumActive !== "object") s.premiumActive = {};
+
+  // Clean invalid actives: if it's not owned, it can't be active.
+  const ownedSet = new Set(getOwnedPremiumIds(s));
+  Object.keys(s.premiumActive).forEach((id) => {
+    if (!ownedSet.has(id)) delete s.premiumActive[id];
+  });
+  // Back-compat: if no premiumActive exists, auto-activate up to 3 owned premiums (deterministic order)
+  if (Object.keys(s.premiumActive).length === 0) {
+    const owned = getOwnedPremiumIds(s).sort();
+    owned.slice(0, PREMIUM_SHOP_CONFIG.activeLimit).forEach((id) => { s.premiumActive[id] = true; });
+  }
+  // Enforce cap
+  const active = getActivePremiumIds(s);
+  if (active.length > PREMIUM_SHOP_CONFIG.activeLimit) {
+    // Keep the first N in existing order, disable the rest.
+    const keep = new Set(active.slice(0, PREMIUM_SHOP_CONFIG.activeLimit));
+    active.slice(PREMIUM_SHOP_CONFIG.activeLimit).forEach((id) => { s.premiumActive[id] = false; });
+    // Also remove any lingering non-kept truthy flags.
+    Object.keys(s.premiumActive).forEach((id) => {
+      if (s.premiumActive[id] && !keep.has(id)) s.premiumActive[id] = false;
+    });
+  }
+}
+
+function setPremiumActive(id, isActive) {
+  ensurePremiumState(state);
+  if (!state.premiumUpgrades[id]) return false;
+
+  if (isActive) {
+    const activeCount = countActivePremium(state);
+    if (activeCount >= PREMIUM_SHOP_CONFIG.activeLimit) return false;
+    state.premiumActive[id] = true;
+  } else {
+    state.premiumActive[id] = false;
+  }
+  saveState();
+  render();
+  return true;
+}
+
+function togglePremiumActive(id) {
+  ensurePremiumState(state);
+  const cur = Boolean(state.premiumActive[id]);
+  const ok = setPremiumActive(id, !cur);
+  if (!ok && !cur) fxEnqueue({ type: "toast", title: "Max 3 prémium lehet aktív egyszerre." });
+}
+
+function hashStringTo32(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function getWeekKeyUTC(date = new Date()) {
+  // Monday 00:00 UTC of current week
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay(); // 0 Sunday
+  const diff = (day + 6) % 7; // days since Monday
+  d.setUTCDate(d.getUTCDate() - diff);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const da = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
+
+function msUntilNextMondayUTC(date = new Date()) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds()));
+  const day = d.getUTCDay();
+  const daysToNextMonday = (8 - day) % 7 || 7; // at least 1..7
+  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + daysToNextMonday));
+  return next.getTime() - Date.now();
+}
+
+function getWeeklyOfferIds(weekKey) {
+  const seed = hashStringTo32(`premium:${weekKey}`);
+  const rnd = mulberry32(seed);
+  const chosen = new Set();
+  const max = PREMIUM_POOL.length;
+  while (chosen.size < PREMIUM_SHOP_CONFIG.weeklyOffers && chosen.size < max) {
+    const idx = Math.floor(rnd() * max);
+    chosen.add(PREMIUM_POOL[idx].id);
+  }
+  return Array.from(chosen);
+}
+
+function getPremiumEffects(s = state, worldId = state.currentWorldId) {
+  ensurePremiumState(s);
+  const activeIds = getActivePremiumIds(s);
+  const eff = {
+    profitMult: 1,
+    speedMult: 1,
+    managerCostMult: 1,
+    jobCostMult: 1,
+    crateLuck: 1,
+    extraLootRolls: 0,
+    timeWarpHoursBonus: 0,
+    questRewardMult: 1,
+    autoLimit: 0,
+  };
+
+  activeIds.forEach((id) => {
+    const up = getPremiumById(id);
+    if (!up || !up.effect) return;
+    const e = up.effect;
+    if (e.profitMult) eff.profitMult *= e.profitMult;
+    if (e.speedMult) eff.speedMult *= e.speedMult;
+    if (e.managerCostMult) eff.managerCostMult *= e.managerCostMult;
+    if (e.jobCostMult) eff.jobCostMult *= e.jobCostMult;
+    if (e.crateLuck) eff.crateLuck *= e.crateLuck;
+    if (e.extraLootRolls) eff.extraLootRolls += e.extraLootRolls;
+    if (e.timeWarpHoursBonus) eff.timeWarpHoursBonus += e.timeWarpHoursBonus;
+    if (e.questRewardMult) eff.questRewardMult *= e.questRewardMult;
+    if (e.autoLimit) eff.autoLimit = Math.max(eff.autoLimit, e.autoLimit);
+  });
+
+  // Clamp to keep sane
+  eff.extraLootRolls = Math.min(5, eff.extraLootRolls);
+  eff.timeWarpHoursBonus = Math.min(8, eff.timeWarpHoursBonus);
+  eff.autoLimit = Math.min(999, eff.autoLimit);
+
+  return eff;
+}
+
+function applyPremiumCrateLuck(baseWeights, luck) {
+  if (!luck || luck === 1) return { ...baseWeights };
+  const w = { ...baseWeights };
+  // Boost rare+ weights, slightly dampen common/uncommon to keep totals reasonable.
+  const boostKeys = ["rare", "ultra-rare", "epic", "legendary", "exotic"];
+  boostKeys.forEach((k) => {
+    if (typeof w[k] === "number") w[k] = Math.max(0, w[k] * luck);
+  });
+  ["common", "uncommon"].forEach((k) => {
+    if (typeof w[k] === "number") w[k] = Math.max(0, w[k] / Math.sqrt(luck));
+  });
+  return w;
+}
+
+function premiumAllowsAuto(worldId, jobId) {
+  const eff = getPremiumEffects(state, worldId);
+  if (!eff.autoLimit) return false;
+  if (eff.autoLimit >= 999) return true;
+  const world = WORLD_CONFIGS.find((w) => w.id === worldId);
+  if (!world) return false;
+  const idx = world.jobs.findIndex((j) => j.id === jobId);
+  if (idx < 0) return false;
+  return idx < eff.autoLimit;
+}
+
+function buyPremiumFromShop(id) {
+  ensurePremiumState(state);
+  const up = getPremiumById(id);
+  if (!up) return;
+  if (state.premiumUpgrades[id]) {
+    fxEnqueue({ type: "toast", title: "Ez már megvan." });
+    return;
+  }
+  if (state.ggl < up.cost) return;
+  state.ggl -= up.cost;
+  state.premiumUpgrades[id] = true;
+  // Auto-activate if slot free
+  if (countActivePremium(state) < PREMIUM_SHOP_CONFIG.activeLimit) state.premiumActive[id] = true;
+  if (state.tracking) state.tracking.premiumUpgradesBought = (state.tracking.premiumUpgradesBought ?? 0) + 1;
+  fxEnqueue({ type: "toast", title: `Megvetted: ${up.icon} ${up.name}` });
+  saveState();
+  render();
+}
+
+function renderPremiumSlots() {
+  if (!premiumActiveSlotsEl || !premiumActiveCountEl) return;
+  ensurePremiumState(state);
+  const active = getActivePremiumIds(state);
+  premiumActiveCountEl.textContent = String(active.length);
+  premiumActiveSlotsEl.innerHTML = "";
+  for (let i = 0; i < PREMIUM_SHOP_CONFIG.activeLimit; i++) {
+    const id = active[i];
+    const slot = document.createElement("div");
+    slot.className = "premium-slot";
+    if (id) {
+      const up = getPremiumById(id);
+      slot.textContent = up?.icon ?? "💎";
+      slot.title = up?.name ?? id;
+    } else {
+      slot.textContent = "—";
+      slot.title = "Üres slot";
+    }
+    premiumActiveSlotsEl.appendChild(slot);
+  }
+}
+
+function renderPremiumShop() {
+  if (!premiumOffersEl || !premiumOwnedEl) return;
+  ensurePremiumState(state);
+
+  const weekKey = getWeekKeyUTC(new Date());
+  if (premiumWeekKeyEl) premiumWeekKeyEl.textContent = weekKey;
+
+  if (premiumResetEl) {
+    const ms = msUntilNextMondayUTC(new Date());
+    premiumResetEl.textContent = formatDuration(ms);
+  }
+
+  renderPremiumSlots();
+
+  const offerIds = getWeeklyOfferIds(weekKey);
+  const offers = offerIds.map((id) => getPremiumById(id)).filter(Boolean);
+
+  premiumOffersEl.innerHTML = "";
+  offers.forEach((up) => {
+    const owned = Boolean(state.premiumUpgrades[up.id]);
+    const card = document.createElement("div");
+    card.className = "premium-item" + (owned ? " owned" : "");
+    card.innerHTML = `
+      <div class="premium-icon">${up.icon}</div>
+      <div class="premium-meta">
+        <h4>${up.name}</h4>
+        <p class="muted small">${up.desc}</p>
+      </div>
+      <div class="premium-actions">
+        <span class="premium-tag">${up.cost} GGL</span>
+        <button class="premium-buy" ${owned || state.ggl < up.cost ? "disabled" : ""}>${owned ? "Megvan" : "Megveszem"}</button>
+      </div>
+    `;
+    card.querySelector(".premium-buy").addEventListener("click", () => buyPremiumFromShop(up.id));
+    premiumOffersEl.appendChild(card);
+  });
+
+  // Owned list
+  const ownedIds = getOwnedPremiumIds(state);
+  premiumOwnedEl.innerHTML = "";
+
+  if (!ownedIds.length) {
+    const empty = document.createElement("div");
+    empty.className = "muted small";
+    empty.textContent = "Még nincs megvett prémium fejlesztésed.";
+    premiumOwnedEl.appendChild(empty);
+    return;
+  }
+
+  const activeSet = new Set(getActivePremiumIds(state));
+  ownedIds
+    .sort((a, b) => {
+      const aa = activeSet.has(a) ? 0 : 1;
+      const bb = activeSet.has(b) ? 0 : 1;
+      if (aa !== bb) return aa - bb;
+      const an = getPremiumById(a)?.name ?? a;
+      const bn = getPremiumById(b)?.name ?? b;
+      return an.localeCompare(bn);
+    })
+    .forEach((id) => {
+      const up = getPremiumById(id) || { id, icon: "💎", name: id, desc: "Régi prémium" , cost: 0 };
+      const active = activeSet.has(id);
+      const canActivate = !active && countActivePremium(state) < PREMIUM_SHOP_CONFIG.activeLimit;
+      const row = document.createElement("div");
+      row.className = "premium-item" + (active ? " active" : "");
+      row.innerHTML = `
+        <div class="premium-icon">${up.icon}</div>
+        <div class="premium-meta">
+          <h4>${up.name}</h4>
+          <p class="muted small">${up.desc}</p>
+        </div>
+        <div class="premium-actions">
+          <button class="premium-toggle" ${active ? "" : (canActivate ? "" : "disabled")}>${active ? "Kikapcsol" : "Aktivál"}</button>
+        </div>
+      `;
+      row.querySelector(".premium-toggle").addEventListener("click", () => togglePremiumActive(id));
+      premiumOwnedEl.appendChild(row);
+    });
+}
+
 const GOTH_GIRLS = [
   { id: "nyx", name: "Nyx Noir", bonusType: "profit", value: 0.2, rarity: "rare" },
   { id: "vela", name: "Vela Veil", bonusType: "speed", value: 0.15, rarity: "rare" },
@@ -1325,6 +1751,14 @@ const eventStatusEl = document.getElementById("event-status");
 const eventWorkplaceList = document.getElementById("event-workplace-list");
 const tabButtons = document.querySelectorAll(".menu-button");
 const tabContents = document.querySelectorAll(".tab-content");
+
+// Premium Shop (Prémium bolt)
+const premiumWeekKeyEl = document.getElementById("premium-week-key");
+const premiumResetEl = document.getElementById("premium-reset");
+const premiumOffersEl = document.getElementById("premium-offers");
+const premiumOwnedEl = document.getElementById("premium-owned");
+const premiumActiveCountEl = document.getElementById("premium-active-count");
+const premiumActiveSlotsEl = document.getElementById("premium-active-slots");
 const buyButtons = document.getElementById("buy-buttons");
 const timeWarpButton = document.getElementById("time-warp-button");
 const crateTimerEl = document.getElementById("crate-timer");
@@ -1738,6 +2172,7 @@ function initState(nextState) {
       exotic: 0,
     };
   }
+  ensurePremiumState(nextState);
   return nextState;
 }
 
@@ -2028,7 +2463,9 @@ function getLiquidKey(rarityId) {
 }
 
 function getLevelCost(baseCost, level) {
-  return Math.round(baseCost * Math.pow(GAME_CONFIG.managerLevelCostGrowth, level));
+  const raw = Math.round(baseCost * Math.pow(GAME_CONFIG.managerLevelCostGrowth, level));
+  const eff = getPremiumEffects(state);
+  return Math.max(0, Math.round(raw * (eff.managerCostMult ?? 1)));
 }
 
 function getAngelTotals(worldState) {
@@ -2070,12 +2507,9 @@ function getGlobalMultipliers(worldId) {
     }
   });
 
-  UPGRADE_CONFIGS.premium.forEach((upgrade) => {
-    if (state.premiumUpgrades[upgrade.id]) {
-      if (upgrade.type === "profit") profit *= upgrade.multiplier;
-      if (upgrade.type === "speed") speed *= upgrade.multiplier;
-    }
-  });
+  const premEff = getPremiumEffects(state, worldId);
+  profit *= premEff.profitMult;
+  speed *= premEff.speedMult;
 
   const p = getPrestigeRewardsForLevel(getCurrentPrestigeLevel());
   profit *= p.cashMult;
@@ -2164,12 +2598,17 @@ function getJobPayout(worldId, jobId) {
 }
 
 function getJobCost(job, quantity, currentQuantity) {
+  let cost = 0;
   if (quantity === 1) {
-    return Math.round(job.baseCost * Math.pow(job.costGrowth, currentQuantity));
+    cost = Math.round(job.baseCost * Math.pow(job.costGrowth, currentQuantity));
+  } else {
+    const startCost = job.baseCost * Math.pow(job.costGrowth, currentQuantity);
+    const total = startCost * ((Math.pow(job.costGrowth, quantity) - 1) / (job.costGrowth - 1));
+    cost = Math.round(total);
   }
-  const startCost = job.baseCost * Math.pow(job.costGrowth, currentQuantity);
-  const total = startCost * ((Math.pow(job.costGrowth, quantity) - 1) / (job.costGrowth - 1));
-  return Math.round(total);
+  const eff = getPremiumEffects(state);
+  cost = Math.max(0, Math.round(cost * (eff.jobCostMult ?? 1)));
+  return cost;
 }
 
 // ===== Buy amount helpers (x1/x10/x100/NEXT/MAX) =====
@@ -2247,7 +2686,7 @@ function canAutoRun(worldId, jobId) {
   const worldState = state.worlds[worldId];
   const manager = getManagerConfig(worldId, jobId);
   const hasManager = manager && getManagerState(worldState, manager.id).owned;
-  const hasPremiumAuto = state.premiumUpgrades["premium-auto"];
+  const hasPremiumAuto = premiumAllowsAuto(worldId, jobId);
   return Boolean(hasManager || hasPremiumAuto);
 }
 
@@ -2482,22 +2921,31 @@ function renderManagers() {
     const liquidCount = state.gothGirlLiquids[liquidKey] ?? 0;
     const canUpgradeRarity = managerState.level === rarity.maxLevel && managerState.rarityIndex < MANAGER_RARITIES.length - 1;
     const card = document.createElement("div");
-    card.className = "card";
+    card.className = "card manager-card";
     card.dataset.managerId = manager.id;
+    const portraitSrc = `assets/managers/${String(manager.name || '').toLowerCase()}-manager.png`;
+    const portraitAlt = `${String(manager.name || '').toLowerCase()} ikon`;
     card.innerHTML = `
-      <div>
-        <h3>${manager.name}</h3>
-        <p>${manager.role}</p>
-        <p>${manager.description}</p>
-        <div class="rarity-row">
-          <span class="rarity-dot ${rarity.color}"></span>
-          <span class="rarity-label ${rarity.color}">${rarity.label}</span>
+      <div class="manager-head">
+        <div class="manager-portrait rarity-frame ${rarity.color}">
+          <img src="${portraitSrc}" alt="${portraitAlt}" loading="lazy" onerror="this.onerror=null;this.src='./favicon.png';" />
         </div>
-      </div>
-      <div class="meta">
-        <span>Szint: ${managerState.level}</span>
-        <span>Sebesség: ${formatSpeedMultiplier(getManagerEffectiveSpeedMultiplier(managerState))}</span>
-        <span>${owned ? "Aktív" : "Elérhető"}</span>
+        <div class="manager-info">
+          <div class="manager-title-row">
+            <h3>${manager.name}</h3>
+            <div class="rarity-row">
+              <span class="rarity-dot ${rarity.color}"></span>
+              <span class="rarity-label ${rarity.color}">${rarity.label}</span>
+            </div>
+          </div>
+          <p class="manager-role">${manager.role}</p>
+          <p class="manager-desc">${manager.description}</p>
+          <div class="meta manager-meta">
+            <span>Szint: ${managerState.level}</span>
+            <span>Sebesség: ${formatSpeedMultiplier(getManagerEffectiveSpeedMultiplier(managerState))}</span>
+            <span>${owned ? "Aktív" : "Elérhető"}</span>
+          </div>
+        </div>
       </div>
       <div class="manager-actions">
         <button class="manager-level" ${!canLevel || worldState.cash < levelCost ? "disabled" : ""}>
@@ -2608,7 +3056,11 @@ function renderUpgrades() {
   });
 
   UPGRADE_CONFIGS.premium.forEach((upgrade) => {
-    const owned = state.premiumUpgrades[upgrade.id];
+    ensurePremiumState(state);
+    const owned = Boolean(state.premiumUpgrades[upgrade.id]);
+    const active = Boolean(state.premiumActive?.[upgrade.id]);
+    const canActivate = owned && !active && countActivePremium(state) < PREMIUM_SHOP_CONFIG.activeLimit;
+
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
@@ -2618,17 +3070,41 @@ function renderUpgrades() {
       </div>
       <div class="meta">
         <span>Ár: ${upgrade.cost} GGL</span>
-        <span>${owned ? "Aktív" : "Elérhető"}</span>
+        <span>${owned ? (active ? "Aktív" : "Megvan") : "Elérhető"}</span>
       </div>
-      <button ${owned || state.ggl < upgrade.cost ? "disabled" : ""}>
-        ${owned ? "Megvan" : "GGL vásárlás"}
+      <button ${
+        !owned ? (state.ggl < upgrade.cost ? "disabled" : "") : (active ? "" : (canActivate ? "" : "disabled"))
+      }>
+        ${
+          !owned ? "GGL vásárlás" : (active ? "Kikapcsol" : "Aktivál")
+        }
       </button>
     `;
     card.querySelector("button").addEventListener("click", () => {
-      if (owned || state.ggl < upgrade.cost) return;
-      state.ggl -= upgrade.cost;
-      state.premiumUpgrades[upgrade.id] = true;
-      if (state.tracking) state.tracking.premiumUpgradesBought = (state.tracking.premiumUpgradesBought ?? 0) + 1;
+      ensurePremiumState(state);
+      if (!owned) {
+        if (state.ggl < upgrade.cost) return;
+        state.ggl -= upgrade.cost;
+        state.premiumUpgrades[upgrade.id] = true;
+        // Auto-activate if slot free
+        if (countActivePremium(state) < PREMIUM_SHOP_CONFIG.activeLimit) state.premiumActive[upgrade.id] = true;
+        if (state.tracking) state.tracking.premiumUpgradesBought = (state.tracking.premiumUpgradesBought ?? 0) + 1;
+        saveState();
+        render();
+        return;
+      }
+      // owned -> toggle
+      if (active) {
+        state.premiumActive[upgrade.id] = false;
+        saveState();
+        render();
+        return;
+      }
+      if (countActivePremium(state) >= PREMIUM_SHOP_CONFIG.activeLimit) {
+        fxEnqueue({ type: "toast", title: "Max 3 prémium lehet aktív egyszerre." });
+        return;
+      }
+      state.premiumActive[upgrade.id] = true;
       saveState();
       render();
     });
@@ -3112,6 +3588,8 @@ function rollLiquid(weights) {
 function openCrate(crateType) {
   const now = Date.now();
   const results = [];
+  const prem = getPremiumEffects(state);
+  const extraLoot = prem.extraLootRolls ?? 0;
   let didOpen = false;
 
   if (crateType === "free") {
@@ -3119,8 +3597,8 @@ function openCrate(crateType) {
     if (elapsed < GAME_CONFIG.crates.cooldownMs) return;
     didOpen = true;
     results.push("rare");
-    const weights = { uncommon: 50, common: 25, rare: 15, "ultra-rare": 6, epic: 3, legendary: 1 };
-    while (results.length < 5) {
+    let weights = applyPremiumCrateLuck({ uncommon: 50, common: 25, rare: 15, "ultra-rare": 6, epic: 3, legendary: 1 }, prem.crateLuck);
+    while (results.length < (5 + extraLoot)) {
       results.push(rollLiquid(weights));
     }
     state.crates.lastFree = now;
@@ -3132,8 +3610,8 @@ function openCrate(crateType) {
     didOpen = true;
     getCurrentWorldState().cash -= price;
     state.crates.cashPurchases = (state.crates.cashPurchases ?? 0) + 1;
-    const weights = { uncommon: 35, common: 30, rare: 20, "ultra-rare": 8, epic: 5, legendary: 2 };
-    while (results.length < 5) {
+    let weights = applyPremiumCrateLuck({ uncommon: 35, common: 30, rare: 20, "ultra-rare": 8, epic: 5, legendary: 2 }, prem.crateLuck);
+    while (results.length < (5 + extraLoot)) {
       results.push(rollLiquid(weights));
     }
   }
@@ -3142,8 +3620,8 @@ function openCrate(crateType) {
     if (state.ggl < 2) return;
     didOpen = true;
     state.ggl -= 2;
-    const weights = { uncommon: 20, common: 25, rare: 25, "ultra-rare": 15, epic: 10, legendary: 4, exotic: 1 };
-    while (results.length < 5) {
+    let weights = applyPremiumCrateLuck({ uncommon: 20, common: 25, rare: 25, "ultra-rare": 15, epic: 10, legendary: 4, exotic: 1 }, prem.crateLuck);
+    while (results.length < (5 + extraLoot)) {
       results.push(rollLiquid(weights));
     }
   }
@@ -3238,6 +3716,7 @@ function updateTimeWarpButton() {
   renderWorkplaces();
   renderManagers();
   renderUpgrades();
+  renderPremiumShop();
   renderMilestones();
   updatePrestigeUI();
   renderPrestigeRewardsTable();
@@ -3554,15 +4033,16 @@ function normalizeLiquidKey(key) {
 
 function applyQuestReward(reward) {
   if (!reward) return;
-  if (reward.cash) getCurrentWorldState().cash += reward.cash;
-  if (reward.ggl) state.ggl += reward.ggl;
+  const qMult = getPremiumEffects(state).questRewardMult ?? 1;
+  if (reward.cash) getCurrentWorldState().cash += Math.round(reward.cash * qMult);
+  if (reward.ggl) state.ggl += Math.round(reward.ggl * qMult);
 
   if (reward.liquids) {
     Object.entries(reward.liquids).forEach(([k, v]) => {
       const key = normalizeLiquidKey(k);
       if (!key) return;
       if (typeof state.gothGirlLiquids[key] !== "number") state.gothGirlLiquids[key] = 0;
-      state.gothGirlLiquids[key] += v;
+      state.gothGirlLiquids[key] += Math.round(v * qMult);
     });
   }
 }
@@ -3717,7 +4197,7 @@ if (timeWarpButton) timeWarpButton.addEventListener("click", () => {
   if (state.tracking) state.tracking.timeWarpUses = (state.tracking.timeWarpUses ?? 0) + 1;
   const worldId = state.currentWorldId;
   const worldState = getCurrentWorldState();
-  const hours = GAME_CONFIG.timeWarp.hours;
+  const hours = GAME_CONFIG.timeWarp.hours + (getPremiumEffects(state).timeWarpHoursBonus ?? 0);
   const seconds = hours * 3600;
   getWorldJobs(worldId).forEach((job) => {
     const jobState = getJobState(worldState, job.id);

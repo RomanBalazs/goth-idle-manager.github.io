@@ -25,6 +25,7 @@
 <button class="menu-button active" data-tab="workplaces">Munkahelyek</button>
           <button class="menu-button" data-tab="managers">Menedzserek</button>
           <button class="menu-button" data-tab="upgrades">Fejlesztések</button>
+          <button class="menu-button" data-tab="premium-shop">Prémium bolt</button>
           <button class="menu-button" data-tab="milestones">Advancement</button>
           <button class="menu-button" data-tab="prestige">Prestige</button>
           <button class="menu-button" data-tab="worlds">Világok</button>
@@ -111,7 +112,43 @@
             </div>
           </section>
 
-          <section class="panel tab-content" data-tab="prestige">
+          
+          <section class="panel tab-content" data-tab="premium-shop">
+            <div class="panel-header">
+              <h2>Prémium bolt</h2>
+              <p class="muted">120 prémium fejlesztésből hetente csak 6 érhető el. A megvettekből egyszerre max 3 lehet aktív.</p>
+            </div>
+
+            <div class="card premium-shopkeeper">
+              <div class="shopkeeper-avatar">🖤🧛‍♀️</div>
+              <div class="shopkeeper-text">
+                <div class="shopkeeper-name">Noctra – Prémium Boltos</div>
+                <div class="muted small">Heti frissülés: <span id="premium-reset">--:--:--</span></div>
+              </div>
+            </div>
+
+            <div class="premium-shop-grid">
+              <div class="card">
+                <div class="premium-section-head">
+                  <h3>Heti kínálat (6)</h3>
+                  <div class="muted small">Hét kulcs: <span id="premium-week-key">-</span></div>
+                </div>
+                <div id="premium-offers" class="premium-card-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="premium-section-head">
+                  <h3>Megvett prémiumok</h3>
+                  <div class="muted small">Aktív: <span id="premium-active-count">0</span>/3</div>
+                </div>
+                <div id="premium-active-slots" class="premium-slots"></div>
+                <div class="divider"></div>
+                <div id="premium-owned" class="premium-card-list"></div>
+              </div>
+            </div>
+          </section>
+
+<section class="panel tab-content" data-tab="prestige">
             <div class="panel-header">
               <h2>Prestige rendszer</h2>
               <p class="muted">Resetelj, szerezz szörny energiaitalokat és GGL-t.</p>
