@@ -1833,3 +1833,51 @@ body.crate-reveal-open{
   padding-top: 0.75rem;
 }
 
+
+
+/* ===== Prestige rewards table ===== */
+.prestige-rewards{
+  margin-top: 1.25rem;
+  background: var(--panel);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.25rem;
+}
+
+.prestige-table-wrap{
+  margin-top: 0.75rem;
+  overflow: auto;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.prestige-table{
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.prestige-table th,
+.prestige-table td{
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.prestige-table thead th{
+  position: sticky;
+  top: 0;
+  background: rgba(15, 13, 20, 0.75);
+  backdrop-filter: blur(8px);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.prestige-row-current{
+  background: rgba(240, 117, 180, 0.12);
+}
+
+.prestige-row-next{
+  outline: 1px solid rgba(139, 225, 198, 0.40);
+  outline-offset: -1px;
+}

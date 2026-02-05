@@ -34,6 +34,51 @@ const GAME_CONFIG = {
   managerSpeedBonusPerLevel: 0.005,
 };
 
+const PRESTIGE_MAX_LEVEL = 40;
+const PRESTIGE_REWARD = {
+  startCashBase: 500,
+  startCashGrowth: 1.10,
+  speedBase: 2.0,
+  speedGrowth: 1.05,
+  cashBase: 2.0,
+  cashGrowth: 1.05,
+  gglBase: 5,
+  gglPerLevel: 1,
+  angelsBase: 5,
+  angelsPerLevel: 1,
+};
+
+function clampPrestigeLevel(n) {
+  const x = Math.floor(Number(n) || 0);
+  return Math.max(0, Math.min(PRESTIGE_MAX_LEVEL, x));
+}
+
+function getCurrentPrestigeLevel() {
+  return clampPrestigeLevel(state?.stats?.totalPrestiges ?? 0);
+}
+
+function getPrestigeRewardsForLevel(level) {
+  const lvl = clampPrestigeLevel(level);
+  if (lvl <= 0) {
+    return {
+      level: 0,
+      startCash: 60,
+      speedMult: 1,
+      cashMult: 1,
+      gglReward: 0,
+      angelsReward: 0,
+    };
+  }
+  const p = PRESTIGE_REWARD;
+  const i = lvl - 1;
+  const startCash = Math.round(p.startCashBase * (p.startCashGrowth ** i));
+  const speedMult = +(p.speedBase * (p.speedGrowth ** i)).toFixed(2);
+  const cashMult = +(p.cashBase * (p.cashGrowth ** i)).toFixed(2);
+  const gglReward = Math.round(p.gglBase + p.gglPerLevel * i);
+  const angelsReward = Math.round(p.angelsBase + p.angelsPerLevel * i);
+  return { level: lvl, startCash, speedMult, cashMult, gglReward, angelsReward };
+}
+
 const MANAGER_RARITIES = [
   // speedMultiplier: how much faster a job cycle becomes when its manager is owned at this rarity
   { id: "uncommon", label: "Uncommon", minLevel: 0, maxLevel: 20, liquidCost: 10, color: "uncommon", speedMultiplier: 1.0 },
@@ -1273,6 +1318,8 @@ const prestigeRequirementsEl = document.getElementById("prestige-requirements");
 const prestigeButton = document.getElementById("prestige-button");
 const angelSummaryEl = document.getElementById("angel-summary");
 const lifetimeSummaryEl = document.getElementById("lifetime-summary");
+const prestigeNextRewardEl = document.getElementById("prestige-next-reward");
+const prestigeRewardTbodyEl = document.getElementById("prestige-reward-tbody");
 const worldListEl = document.getElementById("world-list");
 const eventStatusEl = document.getElementById("event-status");
 const eventWorkplaceList = document.getElementById("event-workplace-list");
@@ -1577,16 +1624,42 @@ function createWorldState(worldId) {
   };
 }
 
-function loadState() {
-  const stored = localStorage.getItem("goth-idl-state");
-  if (!stored) {
-    return initState(structuredClone(defaultState));
+function safeClone(value) {
+  try {
+    return structuredClone(value);
+  } catch (err) {
+    return JSON.parse(JSON.stringify(value));
   }
-  const parsed = JSON.parse(stored);
-  return initState({ ...structuredClone(defaultState), ...parsed });
+}
+
+function loadState() {
+  const KEY = "goth-idl-state";
+  try {
+    const stored = localStorage.getItem(KEY);
+    if (!stored) {
+      return initState(safeClone(defaultState));
+    }
+    const parsed = JSON.parse(stored);
+    const base = safeClone(defaultState);
+    const merged = { ...base, ...(parsed && typeof parsed === "object" ? parsed : {}) };
+    return initState(merged);
+  } catch (err) {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    return initState(safeClone(defaultState));
+  }
 }
 
 function initState(nextState) {
+  if (!nextState || typeof nextState !== "object") nextState = safeClone(defaultState);
+  // Ensure nested containers exist even if older saves had null/invalid values
+  if (!nextState.worlds || typeof nextState.worlds !== "object") nextState.worlds = {};
+  if (!nextState.premiumUpgrades || typeof nextState.premiumUpgrades !== "object") nextState.premiumUpgrades = {};
+  if (!nextState.gothGirls || typeof nextState.gothGirls !== "object") nextState.gothGirls = safeClone(defaultState.gothGirls);
+  if (!nextState.gothGirls.owned || typeof nextState.gothGirls.owned !== "object") nextState.gothGirls.owned = {};
+  if (!nextState.gothGirlLiquids || typeof nextState.gothGirlLiquids !== "object") nextState.gothGirlLiquids = safeClone(defaultState.gothGirlLiquids);
+  if (!nextState.event || typeof nextState.event !== "object") nextState.event = safeClone(defaultState.event);
+  if (!nextState.currentWorldId || typeof nextState.currentWorldId !== "string") nextState.currentWorldId = WORLD_CONFIGS[0].id;
+  if (!getWorldConfig(nextState.currentWorldId)) nextState.currentWorldId = WORLD_CONFIGS[0].id;
   WORLD_CONFIGS.forEach((world) => {
     if (!nextState.worlds[world.id]) {
       nextState.worlds[world.id] = createWorldState(world.id);
@@ -1959,13 +2032,10 @@ function getLevelCost(baseCost, level) {
 }
 
 function getAngelTotals(worldState) {
-  const total = Math.floor(
-    GAME_CONFIG.angel.k * Math.sqrt(worldState.lifetimeEarnings / GAME_CONFIG.angel.unit)
-  );
-  const claimed = worldState.angelsClaimed;
-  const available = Math.max(claimed - worldState.angelsSpent, 0);
-  const upcoming = Math.max(total - claimed, 0);
-  return { total, claimed, available, upcoming };
+  const claimed = Number(worldState?.angelsClaimed ?? 0);
+  const spent = Number(worldState?.angelsSpent ?? 0);
+  const available = Math.max(claimed - spent, 0);
+  return { total: claimed, claimed, available, upcoming: 0 };
 }
 
 function getAngelEffectMultiplier(worldState) {
@@ -2006,6 +2076,10 @@ function getGlobalMultipliers(worldId) {
       if (upgrade.type === "speed") speed *= upgrade.multiplier;
     }
   });
+
+  const p = getPrestigeRewardsForLevel(getCurrentPrestigeLevel());
+  profit *= p.cashMult;
+  speed *= p.speedMult;
 
   const jobs = getWorldJobs(worldId);
   const allMeet = jobs.every((job) => getJobState(worldState, job.id).quantity >= GAME_CONFIG.globalMilestone.threshold);
@@ -2568,6 +2642,30 @@ function renderMilestones() {
   renderAdvancements();
 }
 
+function renderPrestigeRewardsTable() {
+  if (!prestigeRewardTbodyEl) return;
+  const cur = getCurrentPrestigeLevel();
+  const raw = Number(state?.stats?.totalPrestiges ?? 0);
+  const next = clampPrestigeLevel(raw + 1);
+
+  // Build once per level change
+  const stamp = `${cur}|${next}`;
+  if (prestigeRewardTbodyEl.dataset.stamp === stamp) return;
+  prestigeRewardTbodyEl.dataset.stamp = stamp;
+
+  const rows = [];
+  for (let lvl = 1; lvl <= PRESTIGE_MAX_LEVEL; lvl += 1) {
+    const r = getPrestigeRewardsForLevel(lvl);
+    const cls = [
+      lvl === cur ? 'prestige-row-current' : '',
+      lvl === next && raw < PRESTIGE_MAX_LEVEL ? 'prestige-row-next' : ''
+    ].filter(Boolean).join(' ');
+
+    rows.push(`      <tr class="${cls}">        <td>${lvl}</td>        <td>${formatNumber(r.startCash)}</td>        <td>x${r.speedMult}</td>        <td>x${r.cashMult}</td>        <td>+${r.gglReward}</td>        <td>+${r.angelsReward}</td>      </tr>`);
+  }
+  prestigeRewardTbodyEl.innerHTML = rows.join('');
+}
+
 function updatePrestigeUI() {
   const worldState = getCurrentWorldState();
   const angels = getAngelTotals(worldState);
@@ -2577,10 +2675,28 @@ function updatePrestigeUI() {
   const eligibleManagers = Object.values(worldState.managers).filter((manager) => manager?.owned).length;
   const meets = eligibleJobs === jobs.length && eligibleManagers >= jobs.length;
 
-  angelSummaryEl.textContent = `Összes: ${angels.claimed} | Elérhető: ${angels.available} | Resetkor +${angels.upcoming}`;
+  const rawLevel = Number(state?.stats?.totalPrestiges ?? 0);
+  const curLevel = clampPrestigeLevel(rawLevel);
+  const nextLevel = clampPrestigeLevel(rawLevel + 1);
+  const nextReward = getPrestigeRewardsForLevel(nextLevel);
+
+  angelSummaryEl.textContent = `Összes: ${angels.claimed} | Elérhető: ${angels.available}`;
   lifetimeSummaryEl.textContent = `${formatNumber(worldState.lifetimeEarnings)} kassza összesen`;
-  prestigeRequirementsEl.textContent = `Feltétel: minden munkahely ${requirement}+ szinten + legalább ${jobs.length} menedzser. Jelenleg: ${eligibleJobs}/${jobs.length} munkahely, ${eligibleManagers} menedzser.`;
-  prestigeButton.disabled = !meets || angels.upcoming <= 0;
+
+  const reqText = `Feltétel: minden munkahely ${requirement}+ szinten + legalább ${jobs.length} menedzser. Jelenleg: ${eligibleJobs}/${jobs.length} munkahely, ${eligibleManagers} menedzser.`;
+  const capText = rawLevel >= PRESTIGE_MAX_LEVEL ? ' Max szint elérve (40).' : '';
+  prestigeRequirementsEl.textContent = reqText + capText;
+
+  if (prestigeNextRewardEl) {
+    if (rawLevel >= PRESTIGE_MAX_LEVEL) {
+      const cur = getPrestigeRewardsForLevel(PRESTIGE_MAX_LEVEL);
+      prestigeNextRewardEl.textContent = `Aktív Prestige szint: ${curLevel}. (Max) Termelés: x${cur.speedMult} | Kassza: x${cur.cashMult}`;
+    } else {
+      prestigeNextRewardEl.textContent = `Következő Prestige (szint ${nextLevel}) jutalma: Start kassza ${formatNumber(nextReward.startCash)} | Termelés x${nextReward.speedMult} | Kassza x${nextReward.cashMult} | +${nextReward.gglReward} GGL | +${nextReward.angelsReward} energiaital.`;
+    }
+  }
+
+  prestigeButton.disabled = !meets || rawLevel >= PRESTIGE_MAX_LEVEL;
 }
 
 function renderWorlds() {
@@ -3124,6 +3240,7 @@ function updateTimeWarpButton() {
   renderUpgrades();
   renderMilestones();
   updatePrestigeUI();
+  renderPrestigeRewardsTable();
   renderWorlds();
   renderEvent();
   renderCrates();
@@ -3540,31 +3657,48 @@ function renderQuests() {
 
 if (prestigeButton) prestigeButton.addEventListener("click", () => {
   const worldState = getCurrentWorldState();
-  const angels = getAngelTotals(worldState);
-  if (angels.upcoming <= 0) return;
-  if (state.stats) state.stats.totalPrestiges = (state.stats.totalPrestiges ?? 0) + 1;
+  const requirement = GAME_CONFIG.globalMilestone.threshold;
+  const jobs = getWorldJobs(state.currentWorldId);
+  const eligibleJobs = jobs.filter((job) => getJobState(worldState, job.id).quantity >= requirement).length;
+  const eligibleManagers = Object.values(worldState.managers).filter((manager) => manager?.owned).length;
+  const meets = eligibleJobs === jobs.length && eligibleManagers >= jobs.length;
+  if (!meets) return;
 
-  // Tracking: double reset (new angels at least 2x the previous claimed)
+  const rawLevel = Number(state?.stats?.totalPrestiges ?? 0);
+  if (rawLevel >= PRESTIGE_MAX_LEVEL) return;
+
+  const nextLevel = rawLevel + 1;
+  const reward = getPrestigeRewardsForLevel(nextLevel);
+
+  // Apply rewards
+  if (state.stats) state.stats.totalPrestiges = nextLevel;
+  state.ggl = (Number(state.ggl) || 0) + reward.gglReward;
+  worldState.angelsClaimed = (Number(worldState.angelsClaimed) || 0) + reward.angelsReward;
+
+  // Tracking: double reset (total angels at least 2x previous total)
   if (state.tracking) {
-    const prevClaimed = worldState.angelsClaimed ?? 0;
-    const newTotal = angels.total ?? 0;
-    if (prevClaimed > 0 && newTotal >= prevClaimed * 2) {
+    const prevClaimed = Number(worldState.angelsClaimed ?? 0) - reward.angelsReward;
+    const newClaimed = Number(worldState.angelsClaimed ?? 0);
+    if (prevClaimed > 0 && newClaimed >= prevClaimed * 2) {
       state.tracking.doubleResetDone = 1;
     }
   }
 
-  worldState.cash = 500;
+  // Reset world progress
+  worldState.cash = reward.startCash;
   worldState.jobs = {};
   worldState.managers = {};
   worldState.upgrades.cash = {};
   worldState.upgrades.angel = {};
-  worldState.angelsClaimed = angels.total;
   worldState.angelsSpent = 0;
-  state.ggl += 1;
+  worldState.energyAssignments = {};
+  worldState.lifetimeEarnings = 0;
+
   fxEnqueue({ type: 'prestige' });
   saveState();
   render();
 });
+
 
 if (buyButtons) buyButtons.addEventListener("click", (event) => {
   const button = event.target.closest("button");

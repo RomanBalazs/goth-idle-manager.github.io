@@ -132,7 +132,27 @@
                 <button id="prestige-button" class="cta" disabled>Újrakezdés</button>
               </div>
             </div>
-          </section>
+          
+            <div class="prestige-rewards">
+              <h3>Jutalmak (1–40)</h3>
+              <p id="prestige-next-reward" class="muted">Következő prestige jutalom: -</p>
+              <div class="prestige-table-wrap">
+                <table class="prestige-table">
+                  <thead>
+                    <tr>
+                      <th>Szint</th>
+                      <th>Start kassza</th>
+                      <th>Termelés (sebesség)</th>
+                      <th>Kassza (profit)</th>
+                      <th>+GGL</th>
+                      <th>+Energiaital</th>
+                    </tr>
+                  </thead>
+                  <tbody id="prestige-reward-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+</section>
 
           <section class="panel tab-content" data-tab="milestones">
             <div class="panel-header">
@@ -317,8 +337,7 @@
                   <li>Elveszik a cash és a cash/angel upgrade-ek, de a tartós bónuszok megmaradnak.</li>
                 </ul>
                 <p class="guide-note">
-                  Energiaital képlet (egyszerűsítve): <strong>Energiaitalok ≈ 150 × √(Lifetime Earnings quadrillion)
-                  − elköltött energiaitalok</strong>
+                  Energiaital rendszer: <strong>Energiaitalokat Prestige után kapsz fix jutalomként (szintenként skálázódik), és upgrade-ekre költheted.</strong>
                 </p>
                 <p>
                   Általános szabály: akkor érdemes resetelni, ha az új energiaitalok száma legalább ~2×
