@@ -139,6 +139,772 @@ const QUEST_TEMPLATES = {
   ],
 };
 
+// ===== Advancements / Achievements =====
+const ADVANCEMENT_CATEGORIES = [
+  { id: "basic", name: "Alapvető Haladási Mérföldkövek és Ikonok" },
+  { id: "buy_modes", name: "NEXT Vásárlási Bónusz" },
+  { id: "level_total", name: "Munkahely Szint Gyűjtés" },
+  { id: "level_50", name: "Haladó Munkahely Fejlesztés (50. Szint)" },
+  { id: "level_100", name: "Mesteri Munkahely Elérése (100. Szint)" },
+  { id: "automation_speed", name: "Automatizálási Gyorsítás" },
+  { id: "all_business", name: "Teljes Körű Mérföldkő Elérése" },
+  { id: "managers", name: "Manager and Automation Goals" },
+  { id: "cash_upgrades", name: "Cash Upgrade Progression" },
+  { id: "energy", name: "Energy Drink Acquisitions and Upgrades" },
+  { id: "ggl", name: "Goth Girl Liquid and Premium Upgrades" },
+  { id: "timewarp", name: "Time Warp Ability Usage Milestones" },
+  { id: "prestige", name: "Mastery Prestige and Reset" },
+  { id: "performance", name: "Teljesítmény és Bónuszok Elérése" },
+  { id: "worlds", name: "Világok Felfedezése és Mesterré Válása" },
+  { id: "events", name: "Event-Based Challenges" },
+  { id: "loot", name: "Loot Box Rewards" },
+  { id: "rare", name: "Rare Item Acquisition" },
+  { id: "profile", name: "Profile Initialization" },
+  { id: "badges", name: "Unlocking Your First Badge" },
+  { id: "tasks", name: "Daily and Weekly Tasks" },
+  { id: "empire", name: "Achieving the Gothic Empire" },
+];
+
+const ADVANCEMENTS = [
+  // Alap
+  {
+    id: "first_cash",
+    category: "basic",
+    name: "Első Kassza",
+    icon: "💵",
+    desc: "Szerezz összesen 1 000 kasszát.",
+    progress: (s) => ({ current: s.stats?.totalCashEarned ?? 0, target: 1000, kind: "number" }),
+    check: (s) => (s.stats?.totalCashEarned ?? 0) >= 1000,
+  },
+  {
+    id: "clicker_goth",
+    category: "basic",
+    name: "Kattintó Gót",
+    icon: "🖱️",
+    desc: "Indíts el 10 manuális ciklust (Dolgozom).",
+    progress: (s) => ({ current: s.stats?.totalClicks ?? 0, target: 10, kind: "count" }),
+    check: (s) => (s.stats?.totalClicks ?? 0) >= 10,
+  },
+  {
+    id: "first_workplace",
+    category: "basic",
+    name: "Első Munkahely",
+    icon: "🏪",
+    desc: "Vegyél meg 1 munkahelyet.",
+    progress: (s) => ({ current: advCountOwnedWorkplacesAllWorlds(s), target: 1, kind: "count" }),
+    check: (s) => advCountOwnedWorkplacesAllWorlds(s) >= 1,
+  },
+  {
+    id: "scaling_25",
+    category: "basic",
+    name: "Skálázás I.",
+    icon: "📈",
+    desc: "Bármely munkahely szintje érje el a 25-öt.",
+    progress: (s) => ({ current: advMaxJobLevelAllWorlds(s), target: 25, kind: "count" }),
+    check: (s) => advMaxJobLevelAllWorlds(s) >= 25,
+  },
+
+  // NEXT / MAX
+  {
+    id: "next_magic",
+    category: "buy_modes",
+    name: "NEXT Varázsa",
+    icon: "✨",
+    desc: "Használd a NEXT vagy MAX vásárlást 10×.",
+    progress: (s) => ({ current: s.tracking?.buyNextOrMaxUses ?? 0, target: 10, kind: "count" }),
+    check: (s) => (s.tracking?.buyNextOrMaxUses ?? 0) >= 10,
+  },
+
+  // Munkahely mastery
+  {
+    id: "workplace_maniac",
+    category: "level_total",
+    name: "Munkahely-mániás",
+    icon: "🧱",
+    desc: "Vegyél összesen 100 munkahely szintet (összesítve).",
+    progress: (s) => ({ current: s.stats?.totalUpgradesBought ?? 0, target: 100, kind: "count" }),
+    check: (s) => (s.stats?.totalUpgradesBought ?? 0) >= 100,
+  },
+
+  // 50
+  {
+    id: "scaling_50",
+    category: "level_50",
+    name: "Skálázás II.",
+    icon: "🚀",
+    desc: "Érj el 50-es szintet bármely munkahelynél.",
+    progress: (s) => ({ current: advMaxJobLevelAllWorlds(s), target: 50, kind: "count" }),
+    check: (s) => advMaxJobLevelAllWorlds(s) >= 50,
+  },
+
+  // 100
+  {
+    id: "scaling_100",
+    category: "level_100",
+    name: "Skálázás III.",
+    icon: "👑",
+    desc: "Érj el 100-as szintet bármely munkahelynél.",
+    progress: (s) => ({ current: advMaxJobLevelAllWorlds(s), target: 100, kind: "count" }),
+    check: (s) => advMaxJobLevelAllWorlds(s) >= 100,
+  },
+
+  // Automation speed
+  {
+    id: "acceleration",
+    category: "automation_speed",
+    name: "Gyorsulás",
+    icon: "⏩",
+    desc: "Legyen legalább 3 automata ciklus futásban egyszerre.",
+    progress: (s) => ({ current: advActiveAutoCyclesCurrentWorld(s), target: 3, kind: "count" }),
+    check: (s) => advActiveAutoCyclesCurrentWorld(s) >= 3,
+  },
+
+  // All-business milestone
+  {
+    id: "everyone_working",
+    category: "all_business",
+    name: "Mindenki dolgozik",
+    icon: "🤝",
+    desc: "Teljesíts egy teljes körű mérföldkövet (minden munkahely 25+ szinten).",
+    progress: (s) => ({ current: advBestAllBusinessProgress(s).current, target: advBestAllBusinessProgress(s).target, kind: "count" }),
+    check: (s) => advBestAllBusinessProgress(s).current >= advBestAllBusinessProgress(s).target,
+  },
+
+  // Managers & automation
+  {
+    id: "first_manager",
+    category: "managers",
+    name: "Első Menedzser",
+    icon: "🧑‍💼",
+    desc: "Vegyél 1 menedzsert.",
+    progress: (s) => ({ current: advOwnedManagersCountAllWorlds(s), target: 1, kind: "count" }),
+    check: (s) => advOwnedManagersCountAllWorlds(s) >= 1,
+  },
+  {
+    id: "auto_mode",
+    category: "managers",
+    name: "Automata Üzemmód",
+    icon: "🤖",
+    desc: "1 munkahelyet tegyél automata ciklusra.",
+    progress: (s) => ({ current: advAutomatedJobsCountAllWorlds(s), target: 1, kind: "count" }),
+    check: (s) => advAutomatedJobsCountAllWorlds(s) >= 1,
+  },
+  {
+    id: "manager_swarm",
+    category: "managers",
+    name: "Menedzser-raj",
+    icon: "🐝",
+    desc: "Legyen 5 menedzsered összesen.",
+    progress: (s) => ({ current: advOwnedManagersCountAllWorlds(s), target: 5, kind: "count" }),
+    check: (s) => advOwnedManagersCountAllWorlds(s) >= 5,
+  },
+  {
+    id: "staff_chief",
+    category: "managers",
+    name: "Személyzetvezető",
+    icon: "📋",
+    desc: "10 munkahely legyen automatizálva.",
+    progress: (s) => ({ current: advAutomatedJobsCountAllWorlds(s), target: 10, kind: "count" }),
+    check: (s) => advAutomatedJobsCountAllWorlds(s) >= 10,
+  },
+  {
+    id: "never_stops",
+    category: "managers",
+    name: "Soha meg nem áll",
+    icon: "⏱️",
+    desc: "30 percig folyamatosan legyen legalább 1 automata munka aktív.",
+    progress: (s) => ({ current: s.tracking?.autoActiveStreakMs ?? 0, target: 30 * 60 * 1000, kind: "time" }),
+    check: (s) => (s.tracking?.autoActiveStreakMs ?? 0) >= 30 * 60 * 1000,
+  },
+
+  // Cash upgrades
+  {
+    id: "first_cash_upgrade",
+    category: "cash_upgrades",
+    name: "Első Cash Upgrade",
+    icon: "🛠️",
+    desc: "Vegyél 1 Cash Upgrade-et.",
+    progress: (s) => ({ current: s.tracking?.cashUpgradesBought ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.cashUpgradesBought ?? 0) >= 1,
+  },
+  {
+    id: "cash_build",
+    category: "cash_upgrades",
+    name: "Cash Build",
+    icon: "🏗️",
+    desc: "Vegyél 10 Cash Upgrade-et.",
+    progress: (s) => ({ current: s.tracking?.cashUpgradesBought ?? 0, target: 10, kind: "count" }),
+    check: (s) => (s.tracking?.cashUpgradesBought ?? 0) >= 10,
+  },
+
+  // Energy
+  {
+    id: "energy_1",
+    category: "energy",
+    name: "Energiaital",
+    icon: "🧪",
+    desc: "Szerezz 1 Szörny energiaitalt.",
+    progress: (s) => ({ current: advTotalAngelsClaimedAllWorlds(s), target: 1, kind: "count" }),
+    check: (s) => advTotalAngelsClaimedAllWorlds(s) >= 1,
+  },
+  {
+    id: "energy_upgrade_1",
+    category: "energy",
+    name: "Energiaital függő",
+    icon: "⚗️",
+    desc: "Vegyél 1 energiaitalos upgrade-et.",
+    progress: (s) => ({ current: s.tracking?.angelUpgradesBought ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.angelUpgradesBought ?? 0) >= 1,
+  },
+
+  // GGL
+  {
+    id: "ggl_touch",
+    category: "ggl",
+    name: "GGL Érintés",
+    icon: "💧",
+    desc: "Szerezz 1 Goth Girl Liquid (GGL)-t.",
+    progress: (s) => ({ current: s.ggl ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.ggl ?? 0) >= 1,
+  },
+  {
+    id: "premium_taste",
+    category: "ggl",
+    name: "Premium ízlés",
+    icon: "💎",
+    desc: "Vegyél 1 Premium (GGL) upgrade-et.",
+    progress: (s) => ({ current: s.tracking?.premiumUpgradesBought ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.premiumUpgradesBought ?? 0) >= 1,
+  },
+
+  // Time Warp
+  {
+    id: "timewarp_1",
+    category: "timewarp",
+    name: "Time Warp I.",
+    icon: "🌀",
+    desc: "Használd a Time Warp-ot 1×.",
+    progress: (s) => ({ current: s.tracking?.timeWarpUses ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.timeWarpUses ?? 0) >= 1,
+  },
+  {
+    id: "timewarp_10",
+    category: "timewarp",
+    name: "Time Warp II.",
+    icon: "🌀",
+    desc: "Használd a Time Warp-ot 10×.",
+    progress: (s) => ({ current: s.tracking?.timeWarpUses ?? 0, target: 10, kind: "count" }),
+    check: (s) => (s.tracking?.timeWarpUses ?? 0) >= 10,
+  },
+
+  // Prestige / reset
+  {
+    id: "prestige_1",
+    category: "prestige",
+    name: "Első Újrakezdés",
+    icon: "🔁",
+    desc: "Prestige/Reset 1×.",
+    progress: (s) => ({ current: s.stats?.totalPrestiges ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.stats?.totalPrestiges ?? 0) >= 1,
+  },
+
+  // Performance
+  {
+    id: "double_reset",
+    category: "performance",
+    name: "Duplázó Reset",
+    icon: "✖️2",
+    desc: "Resetelj úgy, hogy az új energiaital legalább 2× a jelenleginél.",
+    progress: (s) => ({ current: s.tracking?.doubleResetDone ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.doubleResetDone ?? 0) >= 1,
+  },
+  {
+    id: "reset_routine",
+    category: "performance",
+    name: "Reset Rutin",
+    icon: "🧘",
+    desc: "Prestige 5×.",
+    progress: (s) => ({ current: s.stats?.totalPrestiges ?? 0, target: 5, kind: "count" }),
+    check: (s) => (s.stats?.totalPrestiges ?? 0) >= 5,
+  },
+  {
+    id: "lifetime_legend",
+    category: "performance",
+    name: "Lifetime Legend",
+    icon: "🪙",
+    desc: "Érj el magas lifetime kasszát: 1 quadrillion (összesen).",
+    progress: (s) => ({ current: s.stats?.totalCashEarned ?? 0, target: 1_000_000_000_000_000, kind: "number" }),
+    check: (s) => (s.stats?.totalCashEarned ?? 0) >= 1_000_000_000_000_000,
+  },
+  {
+    id: "permanent_style",
+    category: "performance",
+    name: "Permanens Stílus",
+    icon: "🧿",
+    desc: "Legyen 3 tartós (Premium) bónuszod aktív.",
+    progress: (s) => ({ current: advOwnedPremiumUpgradesCount(s), target: 3, kind: "count" }),
+    check: (s) => advOwnedPremiumUpgradesCount(s) >= 3,
+  },
+
+  // Worlds
+  {
+    id: "first_world_switch",
+    category: "worlds",
+    name: "Új Világ Kapuja",
+    icon: "🚪",
+    desc: "Válts át egy másik világra először.",
+    progress: (s) => ({ current: advVisitedWorldCount(s), target: 2, kind: "count" }),
+    check: (s) => advVisitedWorldCount(s) >= 2,
+  },
+  {
+    id: "world_traveler",
+    category: "worlds",
+    name: "Világjáró",
+    icon: "🧭",
+    desc: "Látogass meg 3 világot összesen.",
+    progress: (s) => ({ current: advVisitedWorldCount(s), target: 3, kind: "count" }),
+    check: (s) => advVisitedWorldCount(s) >= 3,
+  },
+  {
+    id: "world_master",
+    category: "worlds",
+    name: "Világ Master",
+    icon: "🌍",
+    desc: "Maxold ki egy világ fő munkahelyeit (lvl 100 minden munkahely).",
+    progress: (s) => advWorldMasterProgress(s),
+    check: (s) => advWorldMasterProgress(s).current >= advWorldMasterProgress(s).target,
+  },
+
+  // Events
+  {
+    id: "first_event",
+    category: "events",
+    name: "Első Event",
+    icon: "🎟️",
+    desc: "Vegyél részt 1 eventen.",
+    progress: (s) => ({ current: s.event?.startTimestamp ? 1 : 0, target: 1, kind: "count" }),
+    check: (s) => Boolean(s.event?.startTimestamp),
+  },
+  {
+    id: "event_finish",
+    category: "events",
+    name: "Event Finish",
+    icon: "🏁",
+    desc: "Fejezz be 1 eventet (érj el céljutalmat).",
+    progress: (s) => ({ current: s.event?.claimed ? 1 : 0, target: 1, kind: "count" }),
+    check: (s) => Boolean(s.event?.claimed),
+  },
+  {
+    id: "event_top50",
+    category: "events",
+    name: "Top 50%",
+    icon: "🥇",
+    desc: "Eventen végezz a felső 50%-ban (ranglista később).",
+    progress: () => ({ current: 0, target: 1, kind: "count" }),
+    check: () => false,
+    disabled: true,
+  },
+  {
+    id: "event_hardcarry",
+    category: "events",
+    name: "Event Hardcarry",
+    icon: "🎒",
+    desc: "Szerezz eventen 10× ládanyitást.",
+    progress: (s) => ({ current: s.tracking?.eventCratesOpened ?? 0, target: 10, kind: "count" }),
+    check: (s) => (s.tracking?.eventCratesOpened ?? 0) >= 10,
+  },
+
+  // Loot
+  {
+    id: "first_free_crate",
+    category: "loot",
+    name: "Első Ingyen Láda",
+    icon: "🎁",
+    desc: "Nyisd ki az első 24 órás ingyen ládát.",
+    progress: (s) => ({ current: s.tracking?.freeCratesOpened ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.freeCratesOpened ?? 0) >= 1,
+  },
+  {
+    id: "crate_opener",
+    category: "loot",
+    name: "Láda-nyitogató",
+    icon: "📦",
+    desc: "Nyiss ki 10 ládát összesen.",
+    progress: (s) => ({ current: s.stats?.totalCratesOpened ?? 0, target: 10, kind: "count" }),
+    check: (s) => (s.stats?.totalCratesOpened ?? 0) >= 10,
+  },
+  {
+    id: "cash_crates",
+    category: "loot",
+    name: "Cash Láda",
+    icon: "💰",
+    desc: "Nyiss ki 5 Cash ládát.",
+    progress: (s) => ({ current: s.tracking?.cashCratesOpened ?? 0, target: 5, kind: "count" }),
+    check: (s) => (s.tracking?.cashCratesOpened ?? 0) >= 5,
+  },
+  {
+    id: "ggl_crates",
+    category: "loot",
+    name: "GGL Láda",
+    icon: "💧",
+    desc: "Nyiss ki 5 GGL ládát.",
+    progress: (s) => ({ current: s.tracking?.gglCratesOpened ?? 0, target: 5, kind: "count" }),
+    check: (s) => (s.tracking?.gglCratesOpened ?? 0) >= 5,
+  },
+
+  // Rare
+  {
+    id: "rare_liquid",
+    category: "rare",
+    name: "Ritka Nedv",
+    icon: "🧬",
+    desc: "Szerezz 1 ritka dropot a ládából (Ultra-Rare+).",
+    progress: (s) => ({ current: s.tracking?.rareDropsFromCrate ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.rareDropsFromCrate ?? 0) >= 1,
+  },
+
+  // Profile
+  {
+    id: "profile_revived",
+    category: "profile",
+    name: "Profil Felélesztve",
+    icon: "🪪",
+    desc: "Adj meg nicknevet és mentsd el.",
+    progress: (s) => ({ current: s.tracking?.nicknameSaved ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.nicknameSaved ?? 0) >= 1,
+  },
+
+  // Badge
+  {
+    id: "first_badge",
+    category: "badges",
+    name: "Első Badge",
+    icon: "🏷️",
+    desc: "Oldj fel 1 badge-et.",
+    progress: (s) => ({ current: advUnlockedBadgesCount(s), target: 2, kind: "count" }),
+    check: (s) => advUnlockedBadgesCount(s) >= 2,
+  },
+
+  // Tasks
+  {
+    id: "daily_quest",
+    category: "tasks",
+    name: "Napi Küldi",
+    icon: "📅",
+    desc: "Teljesíts 1 napi küldetést.",
+    progress: (s) => ({ current: s.tracking?.dailyQuestsClaimed ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.dailyQuestsClaimed ?? 0) >= 1,
+  },
+  {
+    id: "weekly_quest",
+    category: "tasks",
+    name: "Heti Küldi",
+    icon: "🗓️",
+    desc: "Teljesíts 1 heti küldetést.",
+    progress: (s) => ({ current: s.tracking?.weeklyQuestsClaimed ?? 0, target: 1, kind: "count" }),
+    check: (s) => (s.tracking?.weeklyQuestsClaimed ?? 0) >= 1,
+  },
+
+  // Empire
+  {
+    id: "goth_empire",
+    category: "empire",
+    name: "Gót Birodalom",
+    icon: "🏰",
+    desc: "Teljesíts 25 küldetést összesen (napi+heti).",
+    progress: (s) => ({ current: s.tracking?.totalQuestsClaimed ?? 0, target: 25, kind: "count" }),
+    check: (s) => (s.tracking?.totalQuestsClaimed ?? 0) >= 25,
+  },
+];
+
+// ===== Advancements helpers =====
+function advUnlocked(id) {
+  return Boolean(state.advancements?.unlocked?.[id]);
+}
+
+function unlockAdvancement(id) {
+  const adv = ADVANCEMENTS.find((a) => a.id === id);
+  if (!adv) return false;
+  if (advUnlocked(id)) return false;
+  if (!state.advancements) state.advancements = { unlocked: {}, unlockedAt: {} };
+  if (!state.advancements.unlocked) state.advancements.unlocked = {};
+  if (!state.advancements.unlockedAt) state.advancements.unlockedAt = {};
+  state.advancements.unlocked[id] = true;
+  state.advancements.unlockedAt[id] = Date.now();
+  fxEnqueue({ type: "adv_unlock", id, name: adv.name, icon: adv.icon || "⬜" });
+  return true;
+}
+
+function checkAdvancements() {
+  let changed = false;
+  for (const adv of ADVANCEMENTS) {
+    if (!adv || !adv.id) continue;
+    if (adv.disabled) continue;
+    if (advUnlocked(adv.id)) continue;
+    try {
+      if (typeof adv.check === "function" && adv.check(state)) {
+        if (unlockAdvancement(adv.id)) changed = true;
+      }
+    } catch (err) {
+      console.warn("Advancement check failed:", adv.id, err);
+    }
+  }
+  if (changed) saveState();
+}
+
+function canAutoRunFor(s, worldId, jobId) {
+  const worldState = s.worlds?.[worldId];
+  if (!worldState) return false;
+  const manager = getManagerConfig(worldId, jobId);
+  const hasManager = manager && getManagerState(worldState, manager.id).owned;
+  const hasPremiumAuto = Boolean(s.premiumUpgrades?.["premium-auto"]);
+  return Boolean(hasManager || hasPremiumAuto);
+}
+
+function advMaxJobLevelAllWorlds(s) {
+  let max = 0;
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    world.jobs.forEach((job) => {
+      const q = ws.jobs?.[job.id]?.quantity ?? 0;
+      if (q > max) max = q;
+    });
+  });
+  return max;
+}
+
+function advCountOwnedWorkplacesAllWorlds(s) {
+  let count = 0;
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    world.jobs.forEach((job) => {
+      const q = ws.jobs?.[job.id]?.quantity ?? 0;
+      if (q > 0) count += 1;
+    });
+  });
+  return count;
+}
+
+function advOwnedManagersCountAllWorlds(s) {
+  let count = 0;
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    MANAGER_CONFIGS.filter((m) => m.worldId === world.id).forEach((m) => {
+      if (getManagerState(ws, m.id).owned) count += 1;
+    });
+  });
+  return count;
+}
+
+function advAutomatedJobsCountAllWorlds(s) {
+  let count = 0;
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    world.jobs.forEach((job) => {
+      const q = ws.jobs?.[job.id]?.quantity ?? 0;
+      if (q <= 0) return;
+      if (canAutoRunFor(s, world.id, job.id)) count += 1;
+    });
+  });
+  return count;
+}
+
+function advActiveAutoCyclesCurrentWorld(s) {
+  const worldId = s.currentWorldId;
+  const ws = s.worlds?.[worldId];
+  if (!ws) return 0;
+  const now = Date.now();
+  let count = 0;
+  getWorldJobs(worldId).forEach((job) => {
+    const st = ws.jobs?.[job.id];
+    const q = st?.quantity ?? 0;
+    if (q <= 0) return;
+    if (!canAutoRunFor(s, worldId, job.id)) return;
+    if (st?.cycleEnd && st.cycleEnd > now) count += 1;
+  });
+  return count;
+}
+
+function advBestAllBusinessProgress(s) {
+  const req = GAME_CONFIG.globalMilestone.threshold;
+  let best = { current: 0, target: 0, worldId: null };
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    const total = world.jobs.length;
+    const reached = world.jobs.filter((job) => (ws.jobs?.[job.id]?.quantity ?? 0) >= req).length;
+    const ratio = total ? reached / total : 0;
+    const bestRatio = best.target ? best.current / best.target : 0;
+    if (ratio > bestRatio) best = { current: reached, target: total, worldId: world.id };
+  });
+  return best;
+}
+
+function advWorldMasterProgress(s) {
+  const req = 100;
+  let best = { current: 0, target: 0, kind: "count", worldId: null };
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    const total = world.jobs.length;
+    const reached = world.jobs.filter((job) => (ws.jobs?.[job.id]?.quantity ?? 0) >= req).length;
+    const ratio = total ? reached / total : 0;
+    const bestRatio = best.target ? best.current / best.target : 0;
+    if (ratio > bestRatio) best = { current: reached, target: total, kind: "count", worldId: world.id };
+  });
+  return best;
+}
+
+function advTotalAngelsClaimedAllWorlds(s) {
+  let total = 0;
+  WORLD_CONFIGS.forEach((world) => {
+    const ws = s.worlds?.[world.id];
+    if (!ws) return;
+    total += ws.angelsClaimed ?? 0;
+  });
+  return total;
+}
+
+function advOwnedPremiumUpgradesCount(s) {
+  return Object.values(s.premiumUpgrades || {}).filter(Boolean).length;
+}
+
+function advUnlockedBadgesCount(s) {
+  return Object.values(s.profile?.unlockedBadges || {}).filter(Boolean).length;
+}
+
+function advVisitedWorldCount(s) {
+  return Object.values(s.tracking?.visitedWorlds || {}).filter(Boolean).length;
+}
+
+function updateAutoActiveStreak() {
+  if (!state.tracking) return;
+  const now = Date.now();
+  const last = state.tracking.lastAutoActiveCheckAt || now;
+  const dt = Math.max(0, now - last);
+  state.tracking.lastAutoActiveCheckAt = now;
+
+  let active = false;
+  WORLD_CONFIGS.some((world) => {
+    const ws = state.worlds?.[world.id];
+    if (!ws) return false;
+    return world.jobs.some((job) => {
+      const st = ws.jobs?.[job.id];
+      const q = st?.quantity ?? 0;
+      if (q <= 0) return false;
+      if (!canAutoRunFor(state, world.id, job.id)) return false;
+      if (st?.cycleEnd && st.cycleEnd > now) {
+        active = true;
+        return true;
+      }
+      return false;
+    });
+  });
+
+  if (active) {
+    state.tracking.autoActiveStreakMs = (state.tracking.autoActiveStreakMs ?? 0) + dt;
+  } else {
+    state.tracking.autoActiveStreakMs = 0;
+  }
+}
+
+function formatAdvProgressText(progress) {
+  const kind = progress?.kind || "count";
+  const cur = progress?.current ?? 0;
+  const tgt = progress?.target ?? 1;
+  if (kind === "time") return `${formatDuration(cur)} / ${formatDuration(tgt)}`;
+  if (kind === "number") return `${formatNumber(cur)} / ${formatNumber(tgt)}`;
+  return `${cur} / ${tgt}`;
+}
+
+function getAdvProgressPct(progress) {
+  const cur = progress?.current ?? 0;
+  const tgt = progress?.target ?? 1;
+  if (!tgt || tgt <= 0) return 0;
+  return Math.max(0, Math.min(1, cur / tgt));
+}
+
+function renderAdvancements() {
+  const activeTab = document.querySelector(".tab-content.active")?.dataset?.tab;
+  if (!["advancement", "advancements", "milestones"].includes(activeTab)) return;
+  if (!advancementSummaryEl || !advancementListEl) return;
+
+  const total = ADVANCEMENTS.length;
+  const unlocked = Object.values(state.advancements?.unlocked || {}).filter(Boolean).length;
+  const pct = total ? Math.floor((unlocked / total) * 100) : 0;
+
+  advancementSummaryEl.innerHTML = `
+    <div class="adv-summary">
+      <div>
+        <h3>Fejlesztési Mérföldkövek / Advancement</h3>
+        <p class="muted">Kategóriák szerint rendezett feloldások. A feloldás bal felül jelenik meg.</p>
+      </div>
+      <div class="meta">
+        <span>Feloldva: ${unlocked} / ${total}</span>
+        <span>${pct}%</span>
+      </div>
+    </div>
+    <div class="adv-progress"><span style="width:${pct}%"></span></div>
+  `;
+
+  const byCat = new Map();
+  ADVANCEMENT_CATEGORIES.forEach((c) => byCat.set(c.id, []));
+  ADVANCEMENTS.forEach((a) => {
+    if (!byCat.has(a.category)) byCat.set(a.category, []);
+    byCat.get(a.category).push(a);
+  });
+
+  const html = ADVANCEMENT_CATEGORIES.map((cat) => {
+    const list = byCat.get(cat.id) || [];
+    if (!list.length) return "";
+    const items = list
+      .map((adv) => {
+        const isUnlocked = advUnlocked(adv.id);
+        const progress = isUnlocked
+          ? { current: 1, target: 1, kind: "count" }
+          : typeof adv.progress === "function"
+          ? adv.progress(state)
+          : { current: 0, target: 1, kind: "count" };
+
+        const pct2 = isUnlocked ? 1 : getAdvProgressPct(progress);
+        const status = adv.disabled ? "Hamarosan" : isUnlocked ? "Feloldva" : "Zárolva";
+        const cls = `adv-item ${isUnlocked ? "unlocked" : ""} ${adv.disabled ? "disabled" : ""}`.trim();
+
+        return `
+          <div class="${cls}">
+            <div class="adv-iconbox">${adv.icon || ""}</div>
+            <div class="adv-content">
+              <div class="adv-row">
+                <div class="adv-name">${adv.name}</div>
+                <div class="adv-status">${status}</div>
+              </div>
+              <div class="adv-desc muted">${adv.desc || ""}</div>
+              <div class="adv-progress"><span style="width:${Math.floor(pct2 * 100)}%"></span></div>
+              <div class="adv-progress-text muted">${formatAdvProgressText(isUnlocked ? { current: 1, target: 1, kind: "count" } : progress)}</div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    return `
+      <div class="adv-category">
+        <h4>${cat.name}</h4>
+        <div class="adv-category-items">
+          ${items}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  advancementListEl.innerHTML = html || `<p class="muted">Nincs megjeleníthető advancement.</p>`;
+}
+
+
 
 const WORLD_CONFIGS = [
   {
@@ -457,11 +1223,36 @@ const defaultState = {
     totalCratesOpened: 0,
     totalPrestiges: 0,
     totalCashEarned: 0,
-  },  quests: {
+  },
+  quests: {
     dayKey: null,
     weekKey: null,
     daily: [],
     weekly: [],
+  },
+  advancements: {
+    unlocked: {},
+    unlockedAt: {},
+  },
+  tracking: {
+    buyNextOrMaxUses: 0,
+    timeWarpUses: 0,
+    cashUpgradesBought: 0,
+    angelUpgradesBought: 0,
+    premiumUpgradesBought: 0,
+    freeCratesOpened: 0,
+    cashCratesOpened: 0,
+    gglCratesOpened: 0,
+    rareDropsFromCrate: 0,
+    eventCratesOpened: 0,
+    visitedWorlds: {},
+    dailyQuestsClaimed: 0,
+    weeklyQuestsClaimed: 0,
+    totalQuestsClaimed: 0,
+    nicknameSaved: 0,
+    doubleResetDone: 0,
+    autoActiveStreakMs: 0,
+    lastAutoActiveCheckAt: 0,
   },
 
 };
@@ -501,8 +1292,8 @@ const profileBadgeGrid = document.getElementById("profile-badge-grid");
 const profileSelectedBadgeEl = document.getElementById("profile-selected-badge");
 const profileStatsEl = document.getElementById("profile-stats");
 const profileBadgeSortEl = document.getElementById("profile-badge-sort");
-const milestoneSummaryEl = document.getElementById("milestone-summary");
-const milestoneListEl = document.getElementById("milestone-list");
+const advancementSummaryEl = document.getElementById("advancement-summary");
+const advancementListEl = document.getElementById("advancement-list");
 
 
 const dailyQuestListEl = document.getElementById("daily-quest-list");
@@ -517,6 +1308,7 @@ const FX = {
   payoutPopLast: new Map(), // key: "worldId:jobId" -> timestamp
   bannerLastAt: 0,
   toastLastAt: 0,
+  advLastAt: 0,
   topLast: { cash: null, ggl: null, angels: null },
   topWorldId: null,
 };
@@ -525,8 +1317,10 @@ const FX_CONFIG = {
   payoutPopThrottleMs: 900,
   bannerThrottleMs: 700,
   toastThrottleMs: 220,
+  advToastThrottleMs: 240,
   popLifetimeMs: 950,
   toastLifetimeMs: 2400,
+  advToastLifetimeMs: 2600,
   bannerLifetimeMs: 1600,
 };
 
@@ -544,6 +1338,7 @@ function fxEnsureLayers() {
   layer.innerHTML = `
     <div id="fx-banner-host" class="fx-banner-host"></div>
     <div id="fx-toast-host" class="fx-toast-host"></div>
+    <div id="fx-adv-host" class="fx-adv-host"></div>
   `;
   document.body.appendChild(layer);
   return layer;
@@ -622,6 +1417,31 @@ function fxToast(title, body = '', variant = 'info') {
   window.setTimeout(() => el.classList.add('out'), FX_CONFIG.toastLifetimeMs - 260);
   window.setTimeout(() => el.remove(), FX_CONFIG.toastLifetimeMs);
 }
+
+function fxAdvUnlock(icon, name) {
+  const now = Date.now();
+  if (now - FX.advLastAt < FX_CONFIG.advToastThrottleMs) return;
+  FX.advLastAt = now;
+
+  fxEnsureLayers();
+  const host = document.getElementById('fx-adv-host');
+  if (!host) return;
+
+  const el = document.createElement('div');
+  el.className = 'fx-adv-toast';
+  el.innerHTML = `
+    <div class="fx-adv-icon">${icon || '⬜'}</div>
+    <div>
+      <div class="fx-adv-title">Feloldva</div>
+      <div class="fx-adv-name">${name || ''}</div>
+    </div>
+  `;
+  host.appendChild(el);
+
+  window.setTimeout(() => el.classList.add('out'), FX_CONFIG.advToastLifetimeMs - 260);
+  window.setTimeout(() => el.remove(), FX_CONFIG.advToastLifetimeMs);
+}
+
 
 function fxFlush() {
   if (!FX.queue.length) return;
@@ -711,6 +1531,11 @@ function fxFlush() {
       fxBanner('Prestige!', 'good');
       return;
     }
+
+    if (evt.type === 'adv_unlock') {
+      fxAdvUnlock(evt.icon, evt.name);
+      return;
+    }
   });
 }
 
@@ -782,6 +1607,22 @@ function initState(nextState) {
     if (typeof nextState.stats[k] !== "number") nextState.stats[k] = v;
   });
 
+  // ---- Advancements / tracking defaults (backward compatible) ----
+  if (!nextState.advancements) nextState.advancements = structuredClone(defaultState.advancements);
+  if (!nextState.advancements.unlocked || typeof nextState.advancements.unlocked !== "object") nextState.advancements.unlocked = {};
+  if (!nextState.advancements.unlockedAt || typeof nextState.advancements.unlockedAt !== "object") nextState.advancements.unlockedAt = {};
+
+  if (!nextState.tracking) nextState.tracking = structuredClone(defaultState.tracking);
+  if (!nextState.tracking.visitedWorlds || typeof nextState.tracking.visitedWorlds !== "object") nextState.tracking.visitedWorlds = {};
+
+  Object.entries(defaultState.tracking).forEach(([k, v]) => {
+    if (k === "visitedWorlds") return;
+    if (typeof v === "number" && typeof nextState.tracking[k] !== "number") nextState.tracking[k] = v;
+  });
+
+  // Always mark current world as visited
+  nextState.tracking.visitedWorlds[nextState.currentWorldId] = true;
+
   // ---- Quests defaults (backward compatible) ----
   if (!nextState.quests) nextState.quests = structuredClone(defaultState.quests);
   if (!Array.isArray(nextState.quests.daily)) nextState.quests.daily = [];
@@ -851,7 +1692,11 @@ function ensureBadgesUnlocked() {
 }
 
 function setNickname(value) {
-  state.profile.nickname = sanitizeNickname(value) || "Player";
+  const next = sanitizeNickname(value) || "Player";
+  state.profile.nickname = next;
+  if (state.tracking) {
+    state.tracking.nicknameSaved = 1;
+  }
   saveState();
   render();
 }
@@ -1491,6 +2336,10 @@ function renderWorkplaces() {
       if (!purchaseQty || purchaseQty <= 0) return;
       const purchaseCost = getJobCost(job, purchaseQty, jobState.quantity);
       if (worldState.cash < purchaseCost) return;
+      // Tracking: NEXT/MAX purchase usage
+      if (state.tracking && (mode === "next" || mode === "max")) {
+        state.tracking.buyNextOrMaxUses = (state.tracking.buyNextOrMaxUses ?? 0) + 1;
+      }
       worldState.cash -= purchaseCost;
       const prevQty = jobState.quantity;
       jobState.quantity += purchaseQty;
@@ -1641,6 +2490,7 @@ function renderUpgrades() {
       if (owned || worldState.cash < upgrade.cost) return;
       worldState.cash -= upgrade.cost;
       worldState.upgrades.cash[upgrade.id] = true;
+      if (state.tracking) state.tracking.cashUpgradesBought = (state.tracking.cashUpgradesBought ?? 0) + 1;
       saveState();
       render();
     });
@@ -1669,6 +2519,7 @@ function renderUpgrades() {
       if (owned || angels.available < upgrade.cost) return;
       worldState.angelsSpent += upgrade.cost;
       worldState.upgrades.angel[upgrade.id] = true;
+      if (state.tracking) state.tracking.angelUpgradesBought = (state.tracking.angelUpgradesBought ?? 0) + 1;
       saveState();
       render();
     });
@@ -1696,6 +2547,7 @@ function renderUpgrades() {
       if (owned || state.ggl < upgrade.cost) return;
       state.ggl -= upgrade.cost;
       state.premiumUpgrades[upgrade.id] = true;
+      if (state.tracking) state.tracking.premiumUpgradesBought = (state.tracking.premiumUpgradesBought ?? 0) + 1;
       saveState();
       render();
     });
@@ -1703,67 +2555,10 @@ function renderUpgrades() {
   });
 }
 
+
 function renderMilestones() {
-  const activeTab = document.querySelector(".tab-content.active")?.dataset?.tab;
-  if (activeTab !== "milestones") return;
-  const worldState = getCurrentWorldState();
-  const jobs = getWorldJobs(state.currentWorldId);
-  const requirement = GAME_CONFIG.globalMilestone.threshold;
-  const jobsReached = jobs.filter((job) => getJobState(worldState, job.id).quantity >= requirement).length;
-  const totalJobs = jobs.length;
-  const globalProgress = totalJobs ? jobsReached / totalJobs : 0;
-  const globalReached = jobsReached === totalJobs && totalJobs > 0;
-
-  milestoneSummaryEl.innerHTML = `
-    <div>
-      <h3>Globális mérföldkő</h3>
-      <p class="muted">Minden munkahely érje el a ${requirement}. szintet.</p>
-    </div>
-    <div class="meta">
-      <span>Teljesítve: ${jobsReached} / ${totalJobs}</span>
-      <span>${globalReached ? "Aktív bónuszok" : "Folyamatban"}</span>
-    </div>
-    <div class="milestone-progress"><span style="width:${(globalProgress * 100).toFixed(0)}%"></span></div>
-    <div class="meta">
-      <span>Profit x${GAME_CONFIG.globalMilestone.profitMultiplier}</span>
-      <span>Sebesség x${GAME_CONFIG.globalMilestone.speedMultiplier}</span>
-    </div>
-  `;
-
-  milestoneListEl.innerHTML = "";
-  jobs.forEach((job) => {
-    const jobState = getJobState(worldState, job.id);
-    const nextThreshold = getNextMilestoneThreshold(jobState.quantity);
-    const nextLabel = nextThreshold ? `${nextThreshold}. szint` : "Minden mérföldkő kész";
-    const progressToNext = nextThreshold ? Math.min(jobState.quantity / nextThreshold, 1) : 1;
-    const milestoneItems = GAME_CONFIG.milestones
-      .map((milestone) => {
-        const reached = jobState.quantity >= milestone.threshold;
-        return `
-          <li class="milestone-item ${reached ? "reached" : ""}">
-            <span>${milestone.threshold}. szint</span>
-            <span>${formatMilestoneEffect(milestone)}</span>
-          </li>
-        `;
-      })
-      .join("");
-
-    const card = document.createElement("div");
-    card.className = "card milestone-card";
-    card.innerHTML = `
-      <div>
-        <h3>${job.name}</h3>
-        <p class="muted">Jelenlegi szint: ${jobState.quantity}</p>
-      </div>
-      <div class="meta">
-        <span>Következő: ${nextLabel}</span>
-        <span>${Math.round(progressToNext * 100)}%</span>
-      </div>
-      <div class="milestone-progress"><span style="width:${(progressToNext * 100).toFixed(0)}%"></span></div>
-      <ul class="milestone-list-items">${milestoneItems}</ul>
-    `;
-    milestoneListEl.appendChild(card);
-  });
+  // Legacy name kept for compatibility. The UI is now "Advancement".
+  renderAdvancements();
 }
 
 function updatePrestigeUI() {
@@ -1805,6 +2600,10 @@ function renderWorlds() {
     card.querySelector("button").addEventListener("click", () => {
       if (!unlocked) return;
       state.currentWorldId = world.id;
+      if (state.tracking) {
+        if (!state.tracking.visitedWorlds) state.tracking.visitedWorlds = {};
+        state.tracking.visitedWorlds[world.id] = true;
+      }
       saveState();
       render();
     });
@@ -2052,6 +2851,28 @@ function openCrate(crateType) {
   }
 
   if (!didOpen) return;
+
+  // Tracking by crate type
+  if (state.tracking) {
+    if (crateType === "free") state.tracking.freeCratesOpened = (state.tracking.freeCratesOpened ?? 0) + 1;
+    if (crateType === "cash") state.tracking.cashCratesOpened = (state.tracking.cashCratesOpened ?? 0) + 1;
+    if (crateType === "ggl") state.tracking.gglCratesOpened = (state.tracking.gglCratesOpened ?? 0) + 1;
+
+    // Count "rare drop" as any rarity >= rare (rare/ultra-rare/epic/legendary/exotic)
+    const rareSet = new Set(["rare", "ultra-rare", "epic", "legendary", "exotic"]);
+    if (results.some((r) => rareSet.has(r))) {
+      state.tracking.rareDropsFromCrate = (state.tracking.rareDropsFromCrate ?? 0) + 1;
+    }
+
+    // If an event is active, count it toward event crate openings
+    if (state.event?.startTimestamp) {
+      const endTime = state.event.startTimestamp + EVENT_CONFIG.durationMs;
+      if (Date.now() < endTime) {
+        state.tracking.eventCratesOpened = (state.tracking.eventCratesOpened ?? 0) + 1;
+      }
+    }
+  }
+
   if (state.stats) state.stats.totalCratesOpened = (state.stats.totalCratesOpened ?? 0) + 1;
 
   questOnEvent("crate", 1);
@@ -2112,6 +2933,7 @@ function updateTimeWarpButton() {
 
  function render() {
   renderProfileHeader();
+  checkAdvancements();
   updateTopBar();
   syncBuyButtons();
   updateTimeWarpButton();
@@ -2133,6 +2955,7 @@ function tick() {
   ensureQuests();
   processWorldCycles(state.currentWorldId);
   processEventCycles();
+  updateAutoActiveStreak();
   render();
 }
 
@@ -2468,6 +3291,11 @@ function claimQuest(scope, questId) {
 
   applyQuestReward(q.reward);
   q.claimed = true;
+  if (state.tracking) {
+    if (scope === "daily") state.tracking.dailyQuestsClaimed = (state.tracking.dailyQuestsClaimed ?? 0) + 1;
+    if (scope === "weekly") state.tracking.weeklyQuestsClaimed = (state.tracking.weeklyQuestsClaimed ?? 0) + 1;
+    state.tracking.totalQuestsClaimed = (state.tracking.totalQuestsClaimed ?? 0) + 1;
+  }
   fxEnqueue({ type: 'quest_claim', title: q.title, reward: q.reward });
 
   saveState();
@@ -2534,6 +3362,14 @@ if (prestigeButton) prestigeButton.addEventListener("click", () => {
   if (angels.upcoming <= 0) return;
   if (state.stats) state.stats.totalPrestiges = (state.stats.totalPrestiges ?? 0) + 1;
 
+  // Tracking: double reset (new angels at least 2x the previous claimed)
+  if (state.tracking) {
+    const prevClaimed = worldState.angelsClaimed ?? 0;
+    const newTotal = angels.total ?? 0;
+    if (prevClaimed > 0 && newTotal >= prevClaimed * 2) {
+      state.tracking.doubleResetDone = 1;
+    }
+  }
 
   worldState.cash = 500;
   worldState.jobs = {};
@@ -2562,6 +3398,7 @@ if (buyButtons) buyButtons.addEventListener("click", (event) => {
 
 if (timeWarpButton) timeWarpButton.addEventListener("click", () => {
   if (state.ggl < GAME_CONFIG.timeWarp.gglCost) return;
+  if (state.tracking) state.tracking.timeWarpUses = (state.tracking.timeWarpUses ?? 0) + 1;
   const worldId = state.currentWorldId;
   const worldState = getCurrentWorldState();
   const hours = GAME_CONFIG.timeWarp.hours;
@@ -2575,6 +3412,7 @@ if (timeWarpButton) timeWarpButton.addEventListener("click", () => {
     const payout = getJobPayout(worldId, job.id) * cycles;
     worldState.cash += payout;
     worldState.lifetimeEarnings += payout;
+    if (state.stats) state.stats.totalCashEarned = (state.stats.totalCashEarned ?? 0) + payout;
   });
   state.ggl -= GAME_CONFIG.timeWarp.gglCost;
   saveState();

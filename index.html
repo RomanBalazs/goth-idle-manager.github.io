@@ -25,7 +25,7 @@
 <button class="menu-button active" data-tab="workplaces">Munkahelyek</button>
           <button class="menu-button" data-tab="managers">Menedzserek</button>
           <button class="menu-button" data-tab="upgrades">Fejlesztések</button>
-          <button class="menu-button" data-tab="milestones">Mérföldkövek</button>
+          <button class="menu-button" data-tab="milestones">Advancement</button>
           <button class="menu-button" data-tab="prestige">Prestige</button>
           <button class="menu-button" data-tab="worlds">Világok</button>
           <button class="menu-button" data-tab="events">Eventek</button>
@@ -136,11 +136,11 @@
 
           <section class="panel tab-content" data-tab="milestones">
             <div class="panel-header">
-              <h2>Mérföldkövek</h2>
-              <p class="muted">Szintekhez kötött bónuszok és globális előrelépés.</p>
+              <h2>Fejlesztési Mérföldkövek / Advancement</h2>
+              <p class="muted">Kategóriákba rendezett achievementek, haladás és feloldások.</p>
             </div>
-            <div id="milestone-summary" class="card milestone-summary"></div>
-            <div id="milestone-list" class="card-list milestone-list"></div>
+            <div id="advancement-summary" class="card advancement-summary"></div>
+            <div id="advancement-list" class="advancement-category-list"></div>
           </section>
 
           <section class="panel tab-content" data-tab="worlds">
@@ -351,5 +351,7 @@
       </div>
     </div>
     <script src="app.js"></script>
+    <div id="fx-adv-host" class="fx-adv-host" aria-live="polite" aria-atomic="true"></div>
+
   </body>
 </html>

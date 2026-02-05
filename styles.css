@@ -1143,6 +1143,170 @@ footer {
 }
 
 
+
+
+
+/* ===== Advancement (Fejlesztési mérföldkövek / achievements) ===== */
+.advancement-summary{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.advancement-summary .adv-sum-left{
+  display:flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+.advancement-summary .adv-sum-title{
+  font-weight: 900;
+  letter-spacing: .2px;
+}
+
+.advancement-summary .adv-sum-meta{
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.advancement-summary .adv-sum-bar{
+  height: 10px;
+  width: min(320px, 42vw);
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.advancement-summary .adv-sum-bar span{
+  display:block;
+  height:100%;
+  width: 0;
+  background: var(--accent);
+}
+
+.advancement-category-list{
+  display: grid;
+  gap: 1rem;
+}
+
+.adv-category{
+  padding: 1rem;
+}
+
+.adv-category-head{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .85rem;
+}
+
+.adv-category-head h3{
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.adv-category-head .adv-category-meta{
+  color: var(--muted);
+  font-size: .85rem;
+  white-space: nowrap;
+}
+
+.adv-list{
+  display: grid;
+  gap: .65rem;
+}
+
+.adv-item{
+  display:grid;
+  grid-template-columns: 52px 1fr 140px;
+  align-items:center;
+  gap: .85rem;
+  padding: .75rem .8rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10, 9, 14, 0.30);
+}
+
+.adv-item.unlocked{
+  border-color: rgba(154, 230, 110, 0.35);
+}
+
+.adv-iconbox{
+  width: 46px;
+  height: 46px;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 1.35rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.adv-item.locked .adv-iconbox{
+  opacity: .55;
+  filter: grayscale(1);
+}
+
+.adv-text .adv-name{
+  font-weight: 900;
+  letter-spacing: .15px;
+}
+
+.adv-text .adv-desc{
+  color: var(--muted);
+  font-size: .88rem;
+  margin-top: .2rem;
+}
+
+.adv-right{
+  text-align: right;
+  display:flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.adv-status{
+  font-weight: 800;
+  font-size: .85rem;
+}
+
+.adv-mini{
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.adv-progress{
+  height: 9px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.adv-progress span{
+  display:block;
+  height:100%;
+  width: 0;
+  background: var(--accent-2);
+}
+
+@media (max-width: 560px) {
+  .adv-item{
+    grid-template-columns: 52px 1fr;
+  }
+  .adv-right{
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+
 /* ===== FX / UI Feedback ===== */
 .fx-layer {
   position: fixed;
@@ -1191,6 +1355,70 @@ footer {
 }
 
 @keyframes fxBannerOut {
+  to { transform: translateY(-10px); opacity: 0; }
+}
+
+
+
+.fx-adv-host {
+  position: fixed;
+  top: 86px;
+  left: 14px;
+  display: grid;
+  gap: 0.55rem;
+  width: min(340px, calc(100vw - 28px));
+  z-index: 999;
+}
+
+.fx-adv-toast {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.65rem 0.8rem;
+  background: rgba(15, 13, 20, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 3px solid rgba(154, 230, 110, 0.55);
+  color: #f7f5ff;
+  border-radius: 0.8rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.38);
+  transform: translateY(-12px);
+  opacity: 0;
+  animation: fxAdvIn 220ms ease forwards;
+}
+
+.fx-adv-toast.out {
+  animation: fxAdvOut 220ms ease forwards;
+}
+
+.fx-adv-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 1.35rem;
+}
+
+.fx-adv-title {
+  font-weight: 900;
+  font-size: 0.82rem;
+  color: rgba(154, 230, 110, 0.95);
+}
+
+.fx-adv-name {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+@keyframes fxAdvIn {
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fxAdvOut {
   to { transform: translateY(-10px); opacity: 0; }
 }
 
